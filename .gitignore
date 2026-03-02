@@ -10,44 +10,6 @@ GEMINI.md
 
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# dependencies
-recipe-app/node_modules/
-
-# Expo
-recipe-app/.expo/
-recipe-app/dist/
-recipe-app/web-build/
-recipe-app/expo-env.d.ts
-
-# Native
-recipe-app/.kotlin/
-recipe-app/*.orig.*
-recipe-app/*.jks
-recipe-app/*.p8
-recipe-app/*.p12
-recipe-app/*.key
-recipe-app/*.mobileprovision
-
-# Metro
-recipe-app/.metro-health-check*
-
-# debug
-recipe-app/npm-debug.*
-recipe-app/yarn-debug.*
-recipe-app/yarn-error.*
-
-# macOS
-recipe-app/.DS_Store
-recipe-app/*.pem
-
-# local env files
-recipe-app/.env
-recipe-app/.env*.local
-
-# typescript
-recipe-app/*.tsbuildinfo
-
-recipe-app/app-example
 
 # generated native folders
 /ios
