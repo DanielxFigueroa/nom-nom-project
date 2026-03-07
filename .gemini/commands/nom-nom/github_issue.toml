@@ -1,0 +1,39 @@
+# Invoked as: /nom-nom:github_issue <issue_#>
+description = "Fetch GitHub issue and invoke the software development process on the issue"
+
+prompt = """
+Please analyze and fix the GitHub issue: <issue_#>.
+
+## Behavior 
+Follow these steps: 
+
+### PLAN
+1. Use issue_read via github MCP to get the issue details
+2. Understand the problem described in the issue
+3. Ask clarifying questions if necessary
+4. Understand the prior art for this issue
+    - Search the notepads directory for previous thoughts related to the issue
+    - Search Pull Requests to see if you can find history on this issue
+    - Search the codebase for relevant files
+5. Think hard about how to break down the issue into a series of small, managable tasks.
+6. Document your plan in a new a notepad
+    - Include the issue name in the filename
+    - Include a link to the issue in the notepad
+
+### CREATE CODE 
+- Create a new branch for the issue
+- Solve the issue in small, manageable steps, accoriding to your plan
+- Once all tasks are implemented, create an independent Jest unit test for the new feature
+- Commit changes to the GitHub repository, with a clear prefix that GEMINI CLI made the commit (e.g. [GEMINI])
+
+### TEST
+- Use chrome-devtools tools via MCP to test any changes made to the UI or the frontend
+- Run the full test suite to ensure you haven't broken anything.
+- If the tests are failing, fix them
+- Once you ensure that all tests are passing, move on to the next step.
+
+### DEPLOY
+- Open a Pull Request and request a review. 
+
+Remember to use GitHub MCP for all GitHub-related tasks.
+"""

@@ -4,12 +4,10 @@ pcos-meal-planner/
 
 # Gemini Cli files
 GEMINI.md
+PCOS_Meal_Planner_Plan.md
 
 # VSCODE FILES
 .DS_Store
-
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
 
 # generated native folders
 /ios
