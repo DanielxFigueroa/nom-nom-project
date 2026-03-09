@@ -3,8 +3,12 @@ name: Nom Nom CI/CD
 on:
   push:
     branches: [master]
+    paths:
+      - "recipe-app/**"
   pull_request:
     branches: [master]
+    paths:
+      - "recipe-app/**"
 
 jobs:
   build-and-test:

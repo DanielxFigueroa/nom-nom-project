@@ -22,7 +22,7 @@ Follow these steps:
 
 ### CREATE CODE 
 - Create a new branch for the issue
-- Solve the issue in small, manageable steps, accoriding to your plan
+- Solve the issue in small, manageable steps, accordiing to your plan
 - If the issue involves reading and applying migrations to the supabase database, priortize using the supabase MCP tools.
 - Once all tasks are implemented, create an independent Jest unit test for the new feature
 - Commit changes to the GitHub repository, with a clear prefix that GEMINI CLI made the commit (e.g. [GEMINI])
@@ -37,4 +37,5 @@ Follow these steps:
 - Open a Pull Request and request a review. 
 
 Remember to use GitHub MCP for all GitHub-related tasks.
+Remember to use Supabase MCP for all Supabase-related tasks.
 """
