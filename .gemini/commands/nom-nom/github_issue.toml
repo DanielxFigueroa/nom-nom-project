@@ -2,7 +2,7 @@
 description = "Fetch GitHub issue and invoke the software development process on the issue"
 
 prompt = """
-Please analyze and fix the GitHub issue: <issue_#>.
+Please analyze and fix the GitHub issue: <issue_#>. Remember to use GitHub MCP for all GitHub-related tasks. Remember to use Supabase MCP for all Supabase-related tasks.
 
 ## Behavior 
 Follow these steps: 
@@ -36,6 +36,4 @@ Follow these steps:
 ### DEPLOY
 - Open a Pull Request and request a review. 
 
-Remember to use GitHub MCP for all GitHub-related tasks.
-Remember to use Supabase MCP for all Supabase-related tasks.
 """
