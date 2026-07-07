@@ -35,7 +35,7 @@ Follow these steps:
 
 ### TEST
 
-- Use chrome-devtools tools via Plugins to test any changes made to the UI or the frontend
+- Use chrome-devtools tools or playwright via Plugins to test any changes made to the UI or the frontend
 - Run the full test suite to ensure you haven't broken anything.
 - If the tests are failing, fix them
 - Once you ensure that all tests are passing, move on to the next step.
