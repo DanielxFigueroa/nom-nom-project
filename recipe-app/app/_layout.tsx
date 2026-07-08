@@ -14,7 +14,7 @@ export const unstable_settings = {
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const { user, householdId, isLoading } = useAuth();
-  const segments = useSegments();
+  const segments = useSegments() as string[];
   const router = useRouter();
 
   useEffect(() => {
