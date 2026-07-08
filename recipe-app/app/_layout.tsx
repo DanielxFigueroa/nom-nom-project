@@ -32,7 +32,7 @@ function RootLayoutNav() {
       // User is logged in and has a household, but is trying to access auth screens
       router.replace('/(tabs)');
     }
-  }, [user, householdId, isLoading, segments]);
+  }, [user, householdId, isLoading, segments, router]);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
