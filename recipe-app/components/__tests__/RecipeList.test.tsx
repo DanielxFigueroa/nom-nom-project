@@ -7,6 +7,18 @@ jest.mock('../../src/contexts/AuthContext', () => ({
   useAuth: () => ({ householdId: 'test-household-id' }),
 }));
 
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ push: jest.fn() }),
+}));
+
+jest.mock('expo-image', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    Image: jest.fn((props) => React.createElement(View, props)),
+  };
+});
+
 jest.mock('../../src/lib/supabase', () => ({
   supabase: {
     from: jest.fn(() => ({
