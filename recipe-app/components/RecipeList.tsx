@@ -7,8 +7,8 @@ import { ThemedText } from './themed-text';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/contexts/AuthContext';
 
-const AnimatedImage = Animated.createAnimatedComponent(Image);
-const AnimatedText = Animated.createAnimatedComponent(ThemedText);
+const AnimatedImage = Animated.createAnimatedComponent(Image) as any;
+const AnimatedText = Animated.createAnimatedComponent(ThemedText) as any;
 
 export interface Recipe {
   id: string;
@@ -66,7 +66,7 @@ export function RecipeList() {
       <Pressable 
         key={item.id} 
         style={[styles.card, { height }]}
-        onPress={() => router.push({ pathname: '/modal', params: { id: item.id, title: item.title, image_url: item.image_url } })}
+        onPress={() => router.push({ pathname: '/modal' as any, params: { id: item.id, title: item.title, image_url: item.image_url } })}
       >
         <AnimatedImage
           source={{ uri: item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400' }}

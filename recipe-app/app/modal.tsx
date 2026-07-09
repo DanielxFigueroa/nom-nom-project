@@ -6,8 +6,8 @@ import Animated from 'react-native-reanimated';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
-const AnimatedImage = Animated.createAnimatedComponent(Image);
-const AnimatedText = Animated.createAnimatedComponent(ThemedText);
+const AnimatedImage = Animated.createAnimatedComponent(Image) as any;
+const AnimatedText = Animated.createAnimatedComponent(ThemedText) as any;
 
 export default function ModalScreen() {
   const { id, title, image_url } = useLocalSearchParams<{ id: string, title: string, image_url: string }>();
