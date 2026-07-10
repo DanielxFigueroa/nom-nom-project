@@ -229,6 +229,10 @@ const styles = StyleSheet.create({
   },
   body: {
     padding: 20,
+    flex: 1,
+  },
+  title: {
+    marginBottom: 20,
   },
   title: {
     marginBottom: 8,
