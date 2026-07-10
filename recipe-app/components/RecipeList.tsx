@@ -6,16 +6,12 @@ import Animated from 'react-native-reanimated';
 import { ThemedText } from './themed-text';
 import { supabase } from '../src/lib/supabase';
 import { useAuth } from '../src/contexts/AuthContext';
+import type { Recipe } from '../src/types/recipe';
+
+export type { Recipe };
 
 const AnimatedImage = Animated.createAnimatedComponent(Image) as any;
 const AnimatedText = Animated.createAnimatedComponent(ThemedText) as any;
-
-export interface Recipe {
-  id: string;
-  title: string;
-  image_url: string;
-  household_id: string;
-}
 
 export function RecipeList() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
