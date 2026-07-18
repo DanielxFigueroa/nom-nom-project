@@ -25,7 +25,7 @@ export function RecipeList() {
         setLoading(false);
         return;
       }
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('recipes')
         .select('*')
         .eq('household_id', householdId);

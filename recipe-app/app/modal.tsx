@@ -25,8 +25,6 @@ function IngredientItem({
   checked: boolean;
   onToggle: () => void;
 }) {
-  const textColor = useThemeColor({}, 'text');
-
   const label = [ingredient.quantity, ingredient.unit, ingredient.name]
     .filter(Boolean)
     .join(' ');
@@ -230,9 +228,6 @@ const styles = StyleSheet.create({
   body: {
     padding: 20,
     flex: 1,
-  },
-  title: {
-    marginBottom: 20,
   },
   title: {
     marginBottom: 8,

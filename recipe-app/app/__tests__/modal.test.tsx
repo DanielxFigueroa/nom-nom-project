@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import ModalScreen from '../modal';
@@ -29,7 +30,6 @@ jest.mock('expo-image', () => {
 });
 
 jest.mock('react-native-reanimated', () => {
-  const RN = require('react-native');
   return {
     __esModule: true,
     default: {
@@ -106,7 +106,7 @@ describe('ModalScreen – Recipe Detail', () => {
   });
 
   it('renders the ingredients section with all items', async () => {
-    const { findByTestId, findAllByText } = render(<ModalScreen />);
+    const { findByTestId } = render(<ModalScreen />);
     const section = await findByTestId('ingredients-section');
     expect(section).toBeTruthy();
 
