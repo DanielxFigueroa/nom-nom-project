@@ -8,6 +8,7 @@ import ModalScreen from '../modal';
 // ---------------------------------------------------------------------------
 
 const mockSetOptions = jest.fn();
+const mockPush = jest.fn();
 
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({
@@ -18,6 +19,13 @@ jest.mock('expo-router', () => ({
   useNavigation: () => ({
     setOptions: mockSetOptions,
   }),
+  useRouter: () => ({
+    push: mockPush,
+  }),
+}));
+
+jest.mock('../../src/contexts/AuthContext', () => ({
+  useAuth: () => ({ householdId: 'household-1' }),
 }));
 
 jest.mock('expo-image', () => {
