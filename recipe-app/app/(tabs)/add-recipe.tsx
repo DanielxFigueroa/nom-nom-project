@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Alert, SafeAreaView, Platform } from 'react-native';
+import { StyleSheet, Alert, SafeAreaView, Platform, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { ThemedView } from '@/components/themed-view';
@@ -88,8 +88,6 @@ export default function AddRecipeScreen() {
   );
 }
 
-// Inline container View import mock
-import { View } from 'react-native';
 
 const styles = StyleSheet.create({
   safeArea: {

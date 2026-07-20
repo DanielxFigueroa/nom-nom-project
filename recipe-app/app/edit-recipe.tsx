@@ -27,6 +27,7 @@ export default function EditRecipeScreen() {
   const borderClr = colorScheme === 'dark' ? '#3E4246' : '#CBD5E1';
   const cardBg = colorScheme === 'dark' ? '#25282A' : '#F1F5F9';
   const tintClr = useThemeColor({}, 'tint');
+  const textClr = useThemeColor({}, 'text');
 
   // Fetch recipe details
   useEffect(() => {
@@ -69,11 +70,11 @@ export default function EditRecipeScreen() {
       title: 'Edit Recipe',
       headerLeft: () => (
         <Pressable onPress={() => router.back()} style={{ marginLeft: 10 }} testID="edit-back-btn">
-          <MaterialIcons name="close" size={24} color={useThemeColor({}, 'text')} />
+          <MaterialIcons name="close" size={24} color={textClr} />
         </Pressable>
       ),
     });
-  }, [navigation, router]);
+  }, [navigation, router, textClr]);
 
   // Update recipe handler
   const handleUpdate = async (

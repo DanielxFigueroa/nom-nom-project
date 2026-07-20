@@ -125,7 +125,7 @@ describe('EditRecipeScreen', () => {
   });
 
   it('pre-populates the form with fetched recipe details', async () => {
-    const { findByTestId, findByDisplayValue } = render(<EditRecipeScreen />);
+    const { findByDisplayValue } = render(<EditRecipeScreen />);
 
     // Wait for load
     const titleInput = await findByDisplayValue('Edit Test Recipe');

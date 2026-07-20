@@ -16,7 +16,6 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Markdown from 'react-native-markdown-display';
 
 import { ThemedText } from './themed-text';
-import { ThemedView } from './themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '../src/lib/supabase';
@@ -150,7 +149,7 @@ export function RecipeForm({
       const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('recipes')
         .upload(filePath, blob, {
           contentType: `image/${fileExt === 'png' ? 'png' : 'jpeg'}`,
