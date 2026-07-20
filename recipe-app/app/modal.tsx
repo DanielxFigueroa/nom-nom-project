@@ -1,14 +1,16 @@
-import { useLocalSearchParams, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { StyleSheet, View, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import Animated from 'react-native-reanimated';
 import React, { useEffect, useLayoutEffect, useState, useCallback } from 'react';
 import Markdown from 'react-native-markdown-display';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { supabase } from '../src/lib/supabase';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useAuth } from '../src/contexts/AuthContext';
 import type { Recipe, Ingredient } from '../src/types/recipe';
 
 const AnimatedImage = Animated.createAnimatedComponent(Image) as any;
@@ -69,6 +71,8 @@ export default function ModalScreen() {
     image_url: string;
   }>();
   const navigation = useNavigation();
+  const router = useRouter();
+  const { householdId } = useAuth();
 
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
@@ -77,10 +81,22 @@ export default function ModalScreen() {
 
   const textColor = useThemeColor({}, 'text');
 
-  // Set the header title dynamically
+  // Set the header title and edit button dynamically
   useLayoutEffect(() => {
-    navigation.setOptions({ title: title || 'Recipe Details' });
-  }, [navigation, title]);
+    const isOwner = recipe && householdId && recipe.household_id === householdId;
+    navigation.setOptions({
+      title: recipe?.title ?? title ?? 'Recipe Details',
+      headerRight: isOwner ? () => (
+        <Pressable
+          onPress={() => router.push({ pathname: '/edit-recipe' as any, params: { id } })}
+          style={{ marginRight: 10, padding: 8 }}
+          testID="edit-recipe-header-btn"
+        >
+          <MaterialIcons name="edit" size={22} color={textColor} />
+        </Pressable>
+      ) : undefined,
+    });
+  }, [navigation, title, recipe, householdId, textColor, id, router]);
 
   // Fetch full recipe + ingredients from Supabase
   useEffect(() => {
