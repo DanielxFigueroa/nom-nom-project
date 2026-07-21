@@ -27,7 +27,9 @@ Follow these steps:
 
 ### CREATE CODE
 
+- Retrieve the latest code from the 'master' branch with `git pull`
 - Create a new branch for the issue
+- Pull and merge `master`'s changes into the new branch before any created steps
 - Solve the issue in small, manageable steps, accordiing to your plan
 - If the issue involves reading and applying migrations to the supabase database, priortize using the supabase Plugins tools.
 - Once all tasks are implemented, create an independent Jest unit test for the new feature
