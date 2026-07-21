@@ -78,25 +78,61 @@ export default function ModalScreen() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [isFavorite, setIsFavorite] = useState<boolean>(false);
 
   const textColor = useThemeColor({}, 'text');
 
-  // Set the header title and edit button dynamically
+  const toggleFavorite = useCallback(async () => {
+    const nextFav = !isFavorite;
+    setIsFavorite(nextFav);
+    if (!id) return;
+
+    try {
+      const { error } = await supabase.rpc('toggle_recipe_favorite', {
+        recipe_id_param: id,
+        is_fav_param: nextFav,
+      });
+      if (error) {
+        await supabase.from('recipes').update({ is_favorite: nextFav }).eq('id', id);
+      }
+    } catch {
+      await supabase.from('recipes').update({ is_favorite: nextFav }).eq('id', id);
+    }
+  }, [id, isFavorite]);
+
+  // Set the header title, favorite button, and edit button dynamically
   useLayoutEffect(() => {
     const isOwner = recipe && householdId && recipe.household_id === householdId;
     navigation.setOptions({
       title: recipe?.title ?? title ?? 'Recipe Details',
-      headerRight: isOwner ? () => (
-        <Pressable
-          onPress={() => router.push({ pathname: '/edit-recipe' as any, params: { id } })}
-          style={{ marginRight: 10, padding: 8 }}
-          testID="edit-recipe-header-btn"
-        >
-          <MaterialIcons name="edit" size={22} color={textColor} />
-        </Pressable>
-      ) : undefined,
+      headerRight: () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Pressable
+            onPress={toggleFavorite}
+            style={{ padding: 8, marginRight: isOwner ? 4 : 10 }}
+            accessibilityRole="button"
+            accessibilityLabel={isFavorite ? 'Unfavorite recipe' : 'Favorite recipe'}
+            testID="favorite-toggle-btn"
+          >
+            <MaterialIcons
+              name={isFavorite ? 'favorite' : 'favorite-border'}
+              size={24}
+              color={isFavorite ? '#e63946' : textColor}
+            />
+          </Pressable>
+          {isOwner && (
+            <Pressable
+              onPress={() => router.push({ pathname: '/edit-recipe' as any, params: { id } })}
+              style={{ padding: 8, marginRight: 10 }}
+              testID="edit-recipe-header-btn"
+            >
+              <MaterialIcons name="edit" size={22} color={textColor} />
+            </Pressable>
+          )}
+        </View>
+      ),
     });
-  }, [navigation, title, recipe, householdId, textColor, id, router]);
+  }, [navigation, title, recipe, householdId, textColor, id, router, isFavorite, toggleFavorite]);
 
   // Fetch full recipe + ingredients from Supabase
   useEffect(() => {
@@ -112,7 +148,9 @@ export default function ModalScreen() {
       ]);
 
       if (recipeResult.data) {
-        setRecipe(recipeResult.data as Recipe);
+        const fetchedRecipe = recipeResult.data as Recipe;
+        setRecipe(fetchedRecipe);
+        setIsFavorite(!!fetchedRecipe.is_favorite);
       }
       if (ingredientsResult.data) {
         setIngredients(ingredientsResult.data as Ingredient[]);
@@ -178,10 +216,25 @@ export default function ModalScreen() {
         />
 
         <View style={styles.body}>
-          {/* Title */}
-          <ThemedText type="title" style={styles.title} testID="recipe-title">
-            {displayTitle}
-          </ThemedText>
+          {/* Title & Favorite Toggle */}
+          <View style={styles.titleRow}>
+            <ThemedText type="title" style={styles.title} testID="recipe-title">
+              {displayTitle}
+            </ThemedText>
+            <Pressable
+              onPress={toggleFavorite}
+              style={styles.favoriteButton}
+              accessibilityRole="button"
+              accessibilityLabel={isFavorite ? 'Unfavorite recipe' : 'Favorite recipe'}
+              testID="favorite-toggle-btn"
+            >
+              <MaterialIcons
+                name={isFavorite ? 'favorite' : 'favorite-border'}
+                size={28}
+                color={isFavorite ? '#e63946' : textColor}
+              />
+            </Pressable>
+          </View>
 
           {/* Description */}
           {description ? (
@@ -245,8 +298,18 @@ const styles = StyleSheet.create({
     padding: 20,
     flex: 1,
   },
-  title: {
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 8,
+  },
+  title: {
+    flex: 1,
+    marginRight: 8,
+  },
+  favoriteButton: {
+    padding: 6,
   },
   description: {
     fontSize: 16,
