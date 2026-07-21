@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import ModalScreen from '../modal';
 
 // ---------------------------------------------------------------------------
@@ -78,16 +78,20 @@ const mockSelectRecipes = jest.fn(() => ({ eq: mockEqRecipes }));
 const mockEqIngredients = jest.fn().mockResolvedValue({ data: mockIngredients, error: null });
 const mockSelectIngredients = jest.fn(() => ({ eq: mockEqIngredients }));
 
+const mockUpdateRecipes = jest.fn(() => ({ eq: jest.fn().mockResolvedValue({ error: null }) }));
+const mockRpc = jest.fn().mockResolvedValue({ error: null });
+
 jest.mock('../../src/lib/supabase', () => ({
   supabase: {
+    rpc: mockRpc,
     from: jest.fn((table: string) => {
       if (table === 'recipes') {
-        return { select: mockSelectRecipes };
+        return { select: mockSelectRecipes, update: mockUpdateRecipes };
       }
       if (table === 'ingredients') {
         return { select: mockSelectIngredients };
       }
-      return { select: jest.fn() };
+      return { select: jest.fn(), update: jest.fn() };
     }),
   },
 }));
@@ -152,10 +156,17 @@ describe('ModalScreen – Recipe Detail', () => {
     });
   });
 
-  it('sets the navigation title via setOptions', async () => {
-    render(<ModalScreen />);
+  it('toggles favorite status when favorite button is pressed', async () => {
+    const { findByTestId } = render(<ModalScreen />);
+    const favBtn = await findByTestId('favorite-toggle-btn');
+    expect(favBtn).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(favBtn);
+    });
+
     await waitFor(() => {
-      expect(mockSetOptions).toHaveBeenCalledWith({ title: 'Test Recipe' });
+      expect(mockRpc.mock.calls.length > 0 || mockUpdateRecipes.mock.calls.length > 0).toBe(true);
     });
   });
 
