@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../src/lib/supabase';
 import { useAuth } from '../../src/contexts/AuthContext';
@@ -8,12 +8,36 @@ import { generateInviteCode } from '../../src/utils/household';
 export default function HouseholdSetupScreen() {
   const [inviteCode, setInviteCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const router = useRouter();
   const { user, refreshProfile } = useAuth();
+
+  // Link the household to the current user's profile, then continue into the app.
+  // Uses upsert so it also works when no profile row exists yet (e.g. no signup
+  // trigger created one). Returns true on success.
+  const linkProfileAndContinue = async (householdId: string): Promise<boolean> => {
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .upsert({ id: user!.id, household_id: householdId })
+      .select()
+      .single();
+
+    if (profileError || !profile) {
+      console.error('Link profile failed:', profileError);
+      setErrorMsg(profileError?.message ?? 'Failed to update your profile.');
+      setLoading(false);
+      return false;
+    }
+
+    await refreshProfile();
+    router.replace('/');
+    return true;
+  };
 
   const createHousehold = async () => {
     if (!user) return;
     setLoading(true);
+    setErrorMsg(null);
     const newInviteCode = generateInviteCode();
 
     const { data: household, error: householdError } = await supabase
@@ -22,67 +46,48 @@ export default function HouseholdSetupScreen() {
       .select()
       .single();
 
-    if (householdError) {
-      Alert.alert('Error', 'Failed to create household. Please try again.');
+    if (householdError || !household) {
+      console.error('Create household failed:', householdError);
+      setErrorMsg(householdError?.message ?? 'Failed to create household. Please try again.');
       setLoading(false);
       return;
     }
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({ household_id: household.id })
-      .eq('id', user.id);
-
-    if (profileError) {
-      Alert.alert('Error', 'Failed to update profile.');
-      setLoading(false);
-      return;
-    }
-
-    await refreshProfile();
-    router.replace('/');
+    await linkProfileAndContinue(household.id);
   };
 
   const joinHousehold = async () => {
     if (!user) return;
     if (inviteCode.length !== 6) {
-      Alert.alert('Invalid Code', 'Please enter a valid 6-character invite code.');
+      setErrorMsg('Please enter a valid 6-character invite code.');
       return;
     }
 
     setLoading(true);
+    setErrorMsg(null);
 
     const { data: household, error: queryError } = await supabase
       .from('households')
       .select('id')
       .eq('invite_code', inviteCode.toUpperCase())
-      .single();
+      .maybeSingle();
 
     if (queryError || !household) {
-      Alert.alert('Not Found', 'Could not find a household with that invite code.');
+      console.error('Join household lookup failed:', queryError);
+      setErrorMsg('Could not find a household with that invite code.');
       setLoading(false);
       return;
     }
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({ household_id: household.id })
-      .eq('id', user.id);
-
-    if (profileError) {
-      Alert.alert('Error', 'Failed to update profile.');
-      setLoading(false);
-      return;
-    }
-
-    await refreshProfile();
-    router.replace('/');
+    await linkProfileAndContinue(household.id);
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Set Up Your Household</Text>
-      
+
+      {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
+
       <View style={styles.section}>
         <Text style={styles.subtitle}>Create a New Household</Text>
         <Text style={styles.description}>
@@ -129,6 +134,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 40,
     textAlign: 'center',
+  },
+  errorText: {
+    color: '#e63946',
+    textAlign: 'center',
+    marginBottom: 20,
+    fontSize: 14,
   },
   section: {
     marginBottom: 20,

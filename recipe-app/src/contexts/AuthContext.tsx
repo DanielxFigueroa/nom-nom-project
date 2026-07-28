@@ -30,11 +30,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .from('profiles')
       .select('household_id')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (!error && data) {
-      setHouseholdId(data.household_id);
+    if (error) {
+      console.error('refreshProfile failed:', error.message);
+      return;
     }
+
+    setHouseholdId(data?.household_id ?? null);
   }, [user]);
 
   useEffect(() => {
