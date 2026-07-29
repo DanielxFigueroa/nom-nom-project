@@ -31,7 +31,7 @@ const SEAFOOD_KEYWORDS = [
 
 interface RecipeFormProps {
   initialData?: Partial<Recipe>;
-  initialIngredients?: Ingredient[];
+  initialIngredients?: Partial<Ingredient>[];
   onSubmit: (
     recipe: {
       title: string;
@@ -86,7 +86,7 @@ export function RecipeForm({
   >(
     initialIngredients?.map((i) => ({
       id: i.id,
-      name: i.name,
+      name: i.name ?? '',
       quantity: i.quantity ? String(i.quantity) : '',
       unit: i.unit ?? '',
     })) ?? []

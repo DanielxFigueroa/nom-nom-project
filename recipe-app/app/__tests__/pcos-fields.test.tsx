@@ -82,7 +82,7 @@ describe('PCOS Nutritional Fields Integration', () => {
             meal_timing_suggestions: 'Best for breakfast',
             instructions: 'Cook well',
           }}
-          initialIngredients={[{ name: 'Chicken', quantity: '1', unit: 'lb' }]}
+          initialIngredients={[{ id: 'ing-1', recipe_id: 'recipe-pcos-1', name: 'Chicken', quantity: '1', unit: 'lb' }]}
         />
       );
 
