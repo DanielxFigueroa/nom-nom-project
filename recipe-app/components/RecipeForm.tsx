@@ -31,13 +31,15 @@ const SEAFOOD_KEYWORDS = [
 
 interface RecipeFormProps {
   initialData?: Partial<Recipe>;
-  initialIngredients?: Ingredient[];
+  initialIngredients?: Partial<Ingredient>[];
   onSubmit: (
     recipe: {
       title: string;
       description: string;
       instructions: string;
       image_url: string;
+      insulin_index_notes?: string;
+      meal_timing_suggestions?: string;
     },
     ingredients: {
       name: string;
@@ -73,6 +75,8 @@ export function RecipeForm({
   // Step 1: Details state
   const [title, setTitle] = useState(initialData?.title ?? '');
   const [description, setDescription] = useState(initialData?.description ?? '');
+  const [insulinIndexNotes, setInsulinIndexNotes] = useState(initialData?.insulin_index_notes ?? '');
+  const [mealTimingSuggestions, setMealTimingSuggestions] = useState(initialData?.meal_timing_suggestions ?? '');
   const [imageUri, setImageUri] = useState<string | null>(initialData?.image_url ?? null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -82,7 +86,7 @@ export function RecipeForm({
   >(
     initialIngredients?.map((i) => ({
       id: i.id,
-      name: i.name,
+      name: i.name ?? '',
       quantity: i.quantity ? String(i.quantity) : '',
       unit: i.unit ?? '',
     })) ?? []
@@ -243,6 +247,8 @@ export function RecipeForm({
         description: description.trim(),
         instructions: instructions.trim(),
         image_url: imageUri || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
+        insulin_index_notes: insulinIndexNotes.trim() || undefined,
+        meal_timing_suggestions: mealTimingSuggestions.trim() || undefined,
       },
       cleanIngredients
     );
@@ -321,6 +327,44 @@ export function RecipeForm({
                   numberOfLines={3}
                   textAlignVertical="top"
                   testID="form-description-input"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <ThemedText style={styles.label}>Insulin Index Notes (Optional)</ThemedText>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.textArea,
+                    { color: textClr, borderColor: borderClr, backgroundColor: inputBg },
+                  ]}
+                  placeholder="Notes on glycemic & insulin impact (e.g., low GI, pair with protein/fats)..."
+                  placeholderTextColor={placeholderClr}
+                  value={insulinIndexNotes}
+                  onChangeText={setInsulinIndexNotes}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  testID="form-insulin-notes-input"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <ThemedText style={styles.label}>Meal Timing Suggestions (Optional)</ThemedText>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.textArea,
+                    { color: textClr, borderColor: borderClr, backgroundColor: inputBg },
+                  ]}
+                  placeholder="Suggestions on best time to eat (e.g., post-workout, morning energy boost)..."
+                  placeholderTextColor={placeholderClr}
+                  value={mealTimingSuggestions}
+                  onChangeText={setMealTimingSuggestions}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  testID="form-meal-timing-input"
                 />
               </View>
 
