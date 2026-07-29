@@ -78,7 +78,14 @@ export default function EditRecipeScreen() {
 
   // Update recipe handler
   const handleUpdate = async (
-    updatedRecipe: { title: string; description: string; instructions: string; image_url: string },
+    updatedRecipe: {
+      title: string;
+      description: string;
+      instructions: string;
+      image_url: string;
+      insulin_index_notes?: string;
+      meal_timing_suggestions?: string;
+    },
     updatedIngredients: { name: string; quantity?: string; unit?: string }[]
   ) => {
     if (!id || !recipe) return;
@@ -94,6 +101,8 @@ export default function EditRecipeScreen() {
           description: updatedRecipe.description,
           instructions: updatedRecipe.instructions,
           image_url: updatedRecipe.image_url,
+          insulin_index_notes: updatedRecipe.insulin_index_notes || null,
+          meal_timing_suggestions: updatedRecipe.meal_timing_suggestions || null,
         })
         .eq('id', id);
 

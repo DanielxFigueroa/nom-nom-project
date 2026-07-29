@@ -14,7 +14,14 @@ export default function AddRecipeScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (
-    recipeData: { title: string; description: string; instructions: string; image_url: string },
+    recipeData: {
+      title: string;
+      description: string;
+      instructions: string;
+      image_url: string;
+      insulin_index_notes?: string;
+      meal_timing_suggestions?: string;
+    },
     ingredientsData: { name: string; quantity?: string; unit?: string }[]
   ) => {
     if (!householdId) {
@@ -33,6 +40,8 @@ export default function AddRecipeScreen() {
           description: recipeData.description,
           instructions: recipeData.instructions,
           image_url: recipeData.image_url,
+          insulin_index_notes: recipeData.insulin_index_notes || null,
+          meal_timing_suggestions: recipeData.meal_timing_suggestions || null,
           household_id: householdId,
         })
         .select()

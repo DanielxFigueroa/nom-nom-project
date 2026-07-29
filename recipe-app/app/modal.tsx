@@ -269,6 +269,33 @@ export default function ModalScreen() {
               <Markdown style={markdownStyles}>{instructions}</Markdown>
             </View>
           ) : null}
+
+          {/* PCOS Guidance */}
+          {(recipe?.insulin_index_notes || recipe?.meal_timing_suggestions) ? (
+            <View style={styles.section} testID="pcos-guidance-section">
+              <ThemedText type="subtitle" style={styles.sectionTitle}>
+                PCOS Guidance
+              </ThemedText>
+              {recipe?.insulin_index_notes ? (
+                <View style={styles.pcosCard} testID="insulin-notes-card">
+                  <View style={styles.pcosHeaderRow}>
+                    <MaterialIcons name="insights" size={20} color="#0a7ea4" />
+                    <ThemedText style={styles.pcosCardTitle}>Insulin Index Notes</ThemedText>
+                  </View>
+                  <ThemedText style={styles.pcosCardText}>{recipe.insulin_index_notes}</ThemedText>
+                </View>
+              ) : null}
+              {recipe?.meal_timing_suggestions ? (
+                <View style={styles.pcosCard} testID="meal-timing-card">
+                  <View style={styles.pcosHeaderRow}>
+                    <MaterialIcons name="schedule" size={20} color="#0a7ea4" />
+                    <ThemedText style={styles.pcosCardTitle}>Meal Timing Suggestions</ThemedText>
+                  </View>
+                  <ThemedText style={styles.pcosCardText}>{recipe.meal_timing_suggestions}</ThemedText>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
         </View>
       </ScrollView>
     </ThemedView>
@@ -355,5 +382,30 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     lineHeight: 22,
+  },
+
+  // PCOS Guidance Styles
+  pcosCard: {
+    padding: 14,
+    borderRadius: 10,
+    backgroundColor: 'rgba(10, 126, 164, 0.08)',
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#0a7ea4',
+  },
+  pcosHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  pcosCardTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    marginLeft: 8,
+    color: '#0a7ea4',
+  },
+  pcosCardText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
