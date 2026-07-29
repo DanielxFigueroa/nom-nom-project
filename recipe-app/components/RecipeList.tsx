@@ -14,12 +14,13 @@ export type { Recipe };
 
 interface RecipeListProps {
   onlyFavorites?: boolean;
+  searchQuery?: string;
 }
 
 const AnimatedImage = Animated.createAnimatedComponent(Image) as any;
 const AnimatedText = Animated.createAnimatedComponent(ThemedText) as any;
 
-export function RecipeList({ onlyFavorites = false }: RecipeListProps) {
+export function RecipeList({ onlyFavorites = false, searchQuery = '' }: RecipeListProps) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const { householdId } = useAuth();
@@ -31,7 +32,7 @@ export function RecipeList({ onlyFavorites = false }: RecipeListProps) {
       return;
     }
 
-    let query = supabase.from('recipes').select('*').eq('household_id', householdId);
+    let query = supabase.from('recipes').select('*, ingredients(*)').eq('household_id', householdId);
 
     if (onlyFavorites) {
       query = query.eq('is_favorite', true);
@@ -40,7 +41,7 @@ export function RecipeList({ onlyFavorites = false }: RecipeListProps) {
     const { data } = await query;
 
     if (data) {
-      setRecipes(data);
+      setRecipes(data as Recipe[]);
     }
     setLoading(false);
   }, [householdId, onlyFavorites]);
@@ -71,9 +72,30 @@ export function RecipeList({ onlyFavorites = false }: RecipeListProps) {
     );
   }
 
+  const cleanQuery = searchQuery.trim().toLowerCase();
+  const filteredRecipes = cleanQuery
+    ? recipes.filter((recipe) => {
+        const matchesTitle = recipe.title?.toLowerCase().includes(cleanQuery);
+        const matchesIngredient = recipe.ingredients?.some((ing) =>
+          ing.name?.toLowerCase().includes(cleanQuery)
+        );
+        return matchesTitle || matchesIngredient;
+      })
+    : recipes;
+
+  if (filteredRecipes.length === 0) {
+    return (
+      <View style={styles.emptyContainer} testID="no-search-results-container">
+        <ThemedText style={styles.emptyText} testID="no-search-results-text">
+          {`No recipes matching "${searchQuery}"`}
+        </ThemedText>
+      </View>
+    );
+  }
+
   // Split into left and right columns for masonry
-  const leftColumn = recipes.filter((_, i) => i % 2 === 0);
-  const rightColumn = recipes.filter((_, i) => i % 2 !== 0);
+  const leftColumn = filteredRecipes.filter((_, i) => i % 2 === 0);
+  const rightColumn = filteredRecipes.filter((_, i) => i % 2 !== 0);
 
   const renderCard = (item: Recipe, index: number) => {
     // Generate pseudo-random height based on id or index to create staggered effect
