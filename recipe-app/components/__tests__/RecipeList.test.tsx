@@ -24,15 +24,35 @@ jest.mock('expo-image', () => {
   };
 });
 
+const mockRecipes = [
+  {
+    id: '1',
+    title: 'Avocado Toast',
+    image_url: 'url1',
+    household_id: '123',
+    ingredients: [
+      { id: 'i1', recipe_id: '1', name: 'Avocado' },
+      { id: 'i2', recipe_id: '1', name: 'Sourdough Bread' },
+    ],
+  },
+  {
+    id: '2',
+    title: 'Grilled Salmon Bowl',
+    image_url: 'url2',
+    household_id: '123',
+    ingredients: [
+      { id: 'i3', recipe_id: '2', name: 'Wild Salmon' },
+      { id: 'i4', recipe_id: '2', name: 'Quinoa' },
+    ],
+  },
+];
+
 jest.mock('../../src/lib/supabase', () => ({
   supabase: {
     from: jest.fn(() => ({
       select: jest.fn(() => ({
         eq: jest.fn().mockResolvedValue({
-          data: [
-            { id: '1', title: 'Test Recipe 1', image_url: 'url1', household_id: '123' },
-            { id: '2', title: 'Test Recipe 2', image_url: 'url2', household_id: '123' },
-          ],
+          data: mockRecipes,
           error: null,
         }),
       })),
@@ -41,13 +61,38 @@ jest.mock('../../src/lib/supabase', () => ({
 }));
 
 describe('RecipeList Component', () => {
-  it('renders correctly', async () => {
-    const { findByText } = render(<RecipeList />);
-    
-    const recipe1 = await findByText('Test Recipe 1');
-    const recipe2 = await findByText('Test Recipe 2');
-    
+  it('renders all recipes when searchQuery is empty', async () => {
+    const { findByText } = render(<RecipeList searchQuery="" />);
+
+    const recipe1 = await findByText('Avocado Toast');
+    const recipe2 = await findByText('Grilled Salmon Bowl');
+
     expect(recipe1).toBeTruthy();
     expect(recipe2).toBeTruthy();
+  });
+
+  it('filters recipes by title (case-insensitive)', async () => {
+    const { findByText, queryByText } = render(<RecipeList searchQuery="salmon" />);
+
+    const recipe2 = await findByText('Grilled Salmon Bowl');
+    expect(recipe2).toBeTruthy();
+    expect(queryByText('Avocado Toast')).toBeNull();
+  });
+
+  it('filters recipes by ingredient name (case-insensitive)', async () => {
+    const { findByText, queryByText } = render(<RecipeList searchQuery="sourdough" />);
+
+    const recipe1 = await findByText('Avocado Toast');
+    expect(recipe1).toBeTruthy();
+    expect(queryByText('Grilled Salmon Bowl')).toBeNull();
+  });
+
+  it('displays empty search results message when query matches nothing', async () => {
+    const { findByText, queryByText } = render(<RecipeList searchQuery="Pizza" />);
+
+    const noResults = await findByText('No recipes matching "Pizza"');
+    expect(noResults).toBeTruthy();
+    expect(queryByText('Avocado Toast')).toBeNull();
+    expect(queryByText('Grilled Salmon Bowl')).toBeNull();
   });
 });

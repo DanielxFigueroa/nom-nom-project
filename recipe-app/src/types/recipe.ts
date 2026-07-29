@@ -12,6 +12,7 @@ export interface Recipe {
   insulin_index_notes?: string;
   meal_timing_suggestions?: string;
   created_at?: string;
+  ingredients?: Ingredient[];
 }
 
 /**
