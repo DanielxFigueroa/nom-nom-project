@@ -12,3 +12,11 @@ PCOS_Meal_Planner_Plan.md
 # generated native folders
 /ios
 /android
+
+# native iOS app (XcodeGen — project.yml is the source of truth, .xcodeproj is generated)
+nom-nom-app/NomNom.xcodeproj/
+nom-nom-app/NomNom/Resources/Secrets.xcconfig
+nom-nom-app/build/
+nom-nom-app/DerivedData/
+**/xcuserdata/
+**/.swiftpm/
