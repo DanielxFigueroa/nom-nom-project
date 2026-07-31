@@ -5,6 +5,7 @@ extension Color {
     static let nnTint = Color(hex: 0x0A7EA4)     // primary / tint
     static let nnSuccess = Color(hex: 0x34C759)  // create / join
     static let nnError = Color(hex: 0xE53E3E)    // delete / danger
+    static let nnWarning = Color(hex: 0xD69E2E)  // PCOS / seafood warning
     static let nnSplash = Color(hex: 0x208AEF)   // splash background
 
     init(hex: UInt, alpha: Double = 1) {

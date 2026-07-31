@@ -20,3 +20,6 @@ nom-nom-app/build/
 nom-nom-app/DerivedData/
 **/xcuserdata/
 **/.swiftpm/
+
+# Supabase files
+supabase/.temp

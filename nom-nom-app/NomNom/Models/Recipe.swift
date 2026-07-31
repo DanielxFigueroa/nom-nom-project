@@ -12,7 +12,9 @@ struct Recipe: Identifiable, Codable, Hashable {
     var isFavorite: Bool
     var insulinIndexNotes: String?
     var mealTimingSuggestions: String?
-    var createdAt: Date?
+    /// Kept as the raw ISO8601 string from Postgres. Ordering is done server-side,
+    /// so we avoid client-side date decoding. Parse on demand if displayed.
+    var createdAt: String?
     var ingredients: [Ingredient]?
 
     enum CodingKeys: String, CodingKey {

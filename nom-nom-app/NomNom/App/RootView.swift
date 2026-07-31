@@ -10,7 +10,7 @@ struct RootView: View {
             if auth.isLoading {
                 ProgressView()
             } else if !auth.isAuthenticated {
-                LoginView()
+                NavigationStack { LoginView() }
             } else if auth.householdId == nil {
                 HouseholdSetupView()
             } else {

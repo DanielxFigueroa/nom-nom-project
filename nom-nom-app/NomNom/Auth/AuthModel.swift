@@ -63,8 +63,12 @@ final class AuthModel {
         try await client.auth.signIn(email: email, password: password)
     }
 
-    func signUp(email: String, password: String) async throws {
-        try await client.auth.signUp(email: email, password: password)
+    /// Returns `true` if a session was created immediately (email confirmation
+    /// disabled), `false` if the user must confirm their email first.
+    @discardableResult
+    func signUp(email: String, password: String) async throws -> Bool {
+        let response = try await client.auth.signUp(email: email, password: password)
+        return response.session != nil
     }
 
     /// Not present in the RN app — added per SPEC.md §5.
