@@ -8,16 +8,69 @@ struct IngredientDraft: Identifiable {
     var name: String
     var quantity: String
     var unit: String
+    var quantityValue: Double?
 
-    init(id: UUID = UUID(), name: String, quantity: String = "", unit: String = "") {
+    init(id: UUID = UUID(), name: String, quantity: String = "", unit: String = "", quantityValue: Double? = nil) {
         self.id = id
         self.name = name
         self.quantity = quantity
         self.unit = unit
+        self.quantityValue = quantityValue ?? Self.parseQuantityValue(quantity)
     }
 
     var displayLabel: String {
-        [quantity, unit, name].filter { !$0.isEmpty }.joined(separator: " ")
+        let qtyDisplay = formattedQuantity
+        return [qtyDisplay, unit, name].filter { !$0.isEmpty }.joined(separator: " ")
+    }
+
+    var numericQuantityString: String? {
+        if let val = quantityValue ?? Self.parseQuantityValue(quantity) {
+            if val.truncatingRemainder(dividingBy: 1) == 0 {
+                return String(Int(val))
+            } else {
+                let formatted = String(format: "%.3f", val)
+                return formatted.replacingOccurrences(of: "(?<=\\.\\d*?)0+$", with: "", options: .regularExpression)
+                                .replacingOccurrences(of: "\\.$", with: "", options: .regularExpression)
+            }
+        }
+        return quantity.nilIfEmpty
+    }
+
+    private var formattedQuantity: String {
+        if let val = quantityValue ?? Self.parseQuantityValue(quantity) {
+            if abs(val - 0.25) < 0.001 { return "¼" }
+            if abs(val - 1.0 / 3.0) < 0.01 { return "⅓" }
+            if abs(val - 0.5) < 0.001 { return "½" }
+            if abs(val - 2.0 / 3.0) < 0.01 { return "⅔" }
+            if abs(val - 0.75) < 0.001 { return "¾" }
+            if abs(val - 1.5) < 0.001 { return "1½" }
+            if abs(val - 2.5) < 0.001 { return "2½" }
+            if val.truncatingRemainder(dividingBy: 1) == 0 {
+                return String(Int(val))
+            }
+            return String(val)
+        }
+        return quantity
+    }
+
+    static func parseQuantityValue(_ qty: String) -> Double? {
+        let trimmed = qty.trimmed
+        switch trimmed {
+        case "¼", "1/4": return 0.25
+        case "⅓", "1/3": return 1.0 / 3.0
+        case "½", "1/2": return 0.5
+        case "⅔", "2/3": return 2.0 / 3.0
+        case "¾", "3/4": return 0.75
+        case "1½", "1 1/2": return 1.5
+        case "2½", "2 1/2": return 2.5
+        default:
+            if let val = Double(trimmed) {
+                if abs(val - 1.0 / 3.0) < 0.01 { return 1.0 / 3.0 }
+                if abs(val - 2.0 / 3.0) < 0.01 { return 2.0 / 3.0 }
+                return val
+            }
+            return nil
+        }
     }
 }
 
@@ -40,10 +93,11 @@ final class RecipeFormModel {
     var isUploading = false
 
     // Step 2
+    var measurementSystem: MeasurementSystem = RegionDefaults.measurementSystem()
     var ingredients: [IngredientDraft] = []
     var ingName = ""
-    var ingQty = ""
-    var ingUnit = ""
+    var ingQtyOption: QtyOption? = nil
+    var ingUnit: RecipeUnit? = nil
 
     // Step 3
     var instructions = ""
@@ -72,6 +126,7 @@ final class RecipeFormModel {
         mealTimingSuggestions = recipe.mealTimingSuggestions ?? ""
         imageURLString = recipe.imageURL
         instructions = recipe.instructions ?? ""
+        measurementSystem = recipe.measurementSystem
         self.ingredients = ingredients.map {
             IngredientDraft(id: $0.id, name: $0.name, quantity: $0.quantity ?? "", unit: $0.unit ?? "")
         }
@@ -89,10 +144,17 @@ final class RecipeFormModel {
             errorMessage = "Ingredient name is required."
             return
         }
-        ingredients.append(IngredientDraft(name: name, quantity: ingQty.trimmed, unit: ingUnit.trimmed))
+        let qtyStr = ingQtyOption?.label ?? ""
+        let unitStr = ingUnit?.displayName ?? ""
+        ingredients.append(IngredientDraft(
+            name: name,
+            quantity: qtyStr,
+            unit: unitStr,
+            quantityValue: ingQtyOption?.value
+        ))
         ingName = ""
-        ingQty = ""
-        ingUnit = ""
+        ingQtyOption = nil
+        ingUnit = nil
     }
 
     func removeIngredient(_ draft: IngredientDraft) {
@@ -157,11 +219,13 @@ final class RecipeFormModel {
             instructions: instructions.trimmed,
             imageURL: (imageURLString?.nilIfEmpty) ?? Self.fallbackImageURL,
             insulinIndexNotes: insulinIndexNotes.trimmed.nilIfEmpty,
-            mealTimingSuggestions: mealTimingSuggestions.trimmed.nilIfEmpty
+            mealTimingSuggestions: mealTimingSuggestions.trimmed.nilIfEmpty,
+            measurementSystem: measurementSystem
         )
         let ings = ingredients.map {
-            IngredientInput(name: $0.name, quantity: $0.quantity.nilIfEmpty, unit: $0.unit.nilIfEmpty)
+            IngredientInput(name: $0.name, quantity: $0.numericQuantityString, unit: $0.unit.nilIfEmpty)
         }
         return (input, ings)
     }
 }
+

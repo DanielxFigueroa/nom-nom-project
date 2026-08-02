@@ -152,18 +152,60 @@ struct RecipeFormView: View {
 
     private var ingredientsStep: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Add ingredients for your recipe. Ensure they comply with PCOS guidelines.")
+            Text("Add ingredients for your recipe. Select quantities and units based on your preferred system.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
             VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Measurement System").font(.subheadline.bold())
+                    Spacer()
+                }
+                Picker("System", selection: $model.measurementSystem) {
+                    ForEach(MeasurementSystem.allCases) { sys in
+                        Text(sys.displayName).tag(sys)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: model.measurementSystem) { _, newSystem in
+                    if let currentUnit = model.ingUnit, !RecipeUnit.options(for: newSystem).contains(currentUnit) {
+                        model.ingUnit = nil
+                    }
+                }
+            }
+            .padding(12)
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+
+            VStack(alignment: .leading, spacing: 12) {
                 Text("Add Ingredient").font(.subheadline.bold())
                 HStack(spacing: 8) {
-                    TextField("Qty", text: $model.ingQty).frame(width: 60)
-                    TextField("Unit", text: $model.ingUnit).frame(width: 80)
+                    Picker("Qty", selection: $model.ingQtyOption) {
+                        Text("Qty").tag(Optional<QtyOption>.none)
+                        ForEach(QtyOption.all) { option in
+                            Text(option.label).tag(Optional(option))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(.primary)
+                    .frame(height: 36)
+                    .padding(.horizontal, 8)
+                    .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8))
+
+                    Picker("Unit", selection: $model.ingUnit) {
+                        Text("Unit").tag(Optional<RecipeUnit>.none)
+                        ForEach(RecipeUnit.options(for: model.measurementSystem)) { unit in
+                            Text(unit.displayName).tag(Optional(unit))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(.primary)
+                    .frame(height: 36)
+                    .padding(.horizontal, 8)
+                    .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8))
+
                     TextField("Name (e.g. Chicken)", text: $model.ingName)
+                        .textFieldStyle(.roundedBorder)
                 }
-                .textFieldStyle(.roundedBorder)
 
                 if model.isSeafood(model.ingName) {
                     warning("PCOS Health Warning: Seafood requires dietary substitution. Consider organic chicken, turkey, or tofu.")
