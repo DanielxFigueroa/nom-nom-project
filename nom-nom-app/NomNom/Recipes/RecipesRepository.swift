@@ -11,6 +11,7 @@ struct RecipeInput {
     var mealTimingSuggestions: String?
     var measurementSystem: MeasurementSystem = .imperial
     var servings: Int = 4
+    var tagIDs: [UUID] = []
 }
 
 struct IngredientInput {
@@ -120,6 +121,8 @@ struct RecipesRepository {
 
     private struct IDRow: Decodable { let id: UUID }
 
+    private let tagsRepository = TagsRepository()
+
     @discardableResult
     func createRecipe(_ input: RecipeInput, ingredients: [IngredientInput], householdID: UUID) async throws -> UUID {
         let row = RecipeInsert(
@@ -141,6 +144,9 @@ struct RecipesRepository {
             .execute()
             .value
         try await insertIngredients(ingredients, recipeID: created.id)
+        if !input.tagIDs.isEmpty {
+            try await tagsRepository.setRecipeTags(recipeID: created.id, tagIDs: input.tagIDs)
+        }
         return created.id
     }
 
@@ -159,6 +165,8 @@ struct RecipesRepository {
         // Replace ingredient rows: delete existing, then insert the new set.
         try await client.from("ingredients").delete().eq("recipe_id", value: id).execute()
         try await insertIngredients(ingredients, recipeID: id)
+        // Replace tag associations.
+        try await tagsRepository.setRecipeTags(recipeID: id, tagIDs: input.tagIDs)
     }
 
     func deleteRecipe(id: UUID) async throws {

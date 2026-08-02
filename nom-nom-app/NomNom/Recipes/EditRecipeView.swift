@@ -7,6 +7,7 @@ struct EditRecipeView: View {
     var onSaved: () -> Void
     var onDeleted: () -> Void
 
+    @Environment(AuthModel.self) private var auth
     @Environment(\.dismiss) private var dismiss
     @State private var model: RecipeFormModel
     @State private var isSubmitting = false
@@ -15,11 +16,11 @@ struct EditRecipeView: View {
 
     private let repository = RecipesRepository()
 
-    init(recipe: Recipe, ingredients: [Ingredient], onSaved: @escaping () -> Void, onDeleted: @escaping () -> Void) {
+    init(recipe: Recipe, ingredients: [Ingredient], recipeTags: [Tag] = [], onSaved: @escaping () -> Void, onDeleted: @escaping () -> Void) {
         self.recipe = recipe
         self.onSaved = onSaved
         self.onDeleted = onDeleted
-        _model = State(initialValue: RecipeFormModel(recipe: recipe, ingredients: ingredients))
+        _model = State(initialValue: RecipeFormModel(recipe: recipe, ingredients: ingredients, recipeTags: recipeTags))
     }
 
     var body: some View {
@@ -34,6 +35,11 @@ struct EditRecipeView: View {
         }
         .navigationTitle("Edit Recipe")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if let householdID = auth.householdId {
+                await model.loadTags(householdID: householdID)
+            }
+        }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Cancel") { dismiss() }

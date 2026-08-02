@@ -85,20 +85,86 @@ struct RecipeFormView: View {
                 .padding(8)
                 .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
             }
-            labeledField("Insulin Index Notes (Optional)") {
-                TextField("Notes on glycemic & insulin impact...", text: $model.insulinIndexNotes, axis: .vertical)
-                    .lineLimit(2...5)
-                    .textFieldStyle(.roundedBorder)
+
+            // PCOS Toggle
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle(isOn: $model.isPCOS) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "leaf.fill")
+                            .foregroundStyle(Color.nnTint)
+                        Text("PCOS Recipe")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                }
+                .tint(.nnTint)
+                .padding(12)
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
             }
-            labeledField("Meal Timing Suggestions (Optional)") {
-                TextField("Best time to eat (e.g., post-workout)...", text: $model.mealTimingSuggestions, axis: .vertical)
-                    .lineLimit(2...5)
-                    .textFieldStyle(.roundedBorder)
-            }
+
+            // Tag Editor
+            tagEditorSection
+
             labeledField("Cover Image") {
                 imagePicker
             }
         }
+    }
+
+    // MARK: Tag Editor
+
+    private var tagEditorSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Tags").font(.subheadline.weight(.semibold))
+
+            // Existing tag chips (excluding PCOS — that has its own toggle)
+            let nonPCOSTags = model.availableTags.filter { !$0.isPCOS }
+            if !nonPCOSTags.isEmpty {
+                FlowLayout(spacing: 8) {
+                    ForEach(nonPCOSTags) { tag in
+                        tagChip(tag)
+                    }
+                }
+            }
+
+            // Inline "Add tag" row
+            HStack(spacing: 8) {
+                TextField("New tag...", text: $model.newTagName)
+                    .textFieldStyle(.roundedBorder)
+                Button {
+                    guard let householdID = householdIDForTags else { return }
+                    Task { await model.createAndSelectTag(householdID: householdID) }
+                } label: {
+                    Label("Add", systemImage: "plus")
+                        .font(.subheadline.weight(.medium))
+                }
+                .buttonStyle(.bordered)
+                .tint(.nnTint)
+                .disabled(model.newTagName.trimmed.isEmpty)
+            }
+        }
+    }
+
+    /// The household ID is needed for tag operations. The form doesn't hold it
+    /// directly, so we pull it from the AuthModel environment.
+    @Environment(AuthModel.self) private var authForTags
+    private var householdIDForTags: UUID? { authForTags.householdId }
+
+    private func tagChip(_ tag: Tag) -> some View {
+        let isSelected = model.selectedTagIDs.contains(tag.id)
+        return Button {
+            model.toggleTag(tag.id)
+        } label: {
+            Text(tag.name)
+                .font(.subheadline)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    isSelected ? Color.nnTint : Color(.secondarySystemBackground),
+                    in: Capsule()
+                )
+                .foregroundStyle(isSelected ? .white : .primary)
+        }
+        .buttonStyle(.plain)
     }
 
     private var imagePicker: some View {

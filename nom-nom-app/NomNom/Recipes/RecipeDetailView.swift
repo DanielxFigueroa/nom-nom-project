@@ -1,8 +1,8 @@
 import SwiftUI
 import MarkdownUI
 
-/// Recipe detail: hero image, ingredient checklist with serving scaling, markdown
-/// instructions, PCOS cards, favorite toggle, owner-only edit (SPEC.md §4).
+/// Recipe detail: hero image, tag chips, ingredient checklist with serving scaling,
+/// markdown instructions, favorite toggle, owner-only edit (SPEC.md §4).
 struct RecipeDetailView: View {
     @Environment(AuthModel.self) private var auth
     @Environment(RecipesRefresh.self) private var recipesRefresh
@@ -26,6 +26,11 @@ struct RecipeDetailView: View {
                     Text(model.recipe.title)
                         .font(.title.bold())
 
+                    // Tag chips
+                    if !model.tags.isEmpty {
+                        tagChipsSection
+                    }
+
                     if let description = model.recipe.description, !description.isEmpty {
                         Text(description)
                             .foregroundStyle(.secondary)
@@ -39,10 +44,6 @@ struct RecipeDetailView: View {
                         section("Instructions") {
                             Markdown(instructions)
                         }
-                    }
-
-                    if model.hasPCOSGuidance {
-                        pcosSection
                     }
                 }
                 .padding(20)
@@ -80,6 +81,7 @@ struct RecipeDetailView: View {
                 EditRecipeView(
                     recipe: model.recipe,
                     ingredients: model.ingredients,
+                    recipeTags: model.tags,
                     onSaved: {
                         showEdit = false
                         recipesRefresh.trigger()
@@ -181,17 +183,18 @@ struct RecipeDetailView: View {
         .accessibilityAddTraits(checked ? [.isSelected] : [])
     }
 
-    private var pcosSection: some View {
-        section("PCOS Guidance") {
-            VStack(spacing: 12) {
-                if let notes = model.recipe.insulinIndexNotes, !notes.isEmpty {
-                    PCOSGuidanceCard(systemImage: "chart.line.uptrend.xyaxis",
-                                     title: "Insulin Index Notes", text: notes)
-                }
-                if let timing = model.recipe.mealTimingSuggestions, !timing.isEmpty {
-                    PCOSGuidanceCard(systemImage: "clock",
-                                     title: "Meal Timing Suggestions", text: timing)
-                }
+    private var tagChipsSection: some View {
+        FlowLayout(spacing: 8) {
+            ForEach(model.tags) { tag in
+                Text(tag.name)
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        tag.isPCOS ? Color.nnTint : Color(.secondarySystemBackground),
+                        in: Capsule()
+                    )
+                    .foregroundStyle(tag.isPCOS ? .white : .primary)
             }
         }
     }

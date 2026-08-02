@@ -7,12 +7,14 @@ import Observation
 final class RecipeDetailModel {
     var recipe: Recipe
     var ingredients: [Ingredient] = []
+    var tags: [Tag] = []
     var checkedIDs: Set<UUID> = []
     var isFavorite: Bool
     var isLoading = true
     var desiredServings: Int
 
     private let repository = RecipesRepository()
+    private let tagsRepository = TagsRepository()
 
     init(recipe: Recipe) {
         self.recipe = recipe
@@ -53,20 +55,23 @@ final class RecipeDetailModel {
         desiredServings = max(recipe.servings, 1)
     }
 
-    var hasPCOSGuidance: Bool {
-        !(recipe.insulinIndexNotes ?? "").isEmpty || !(recipe.mealTimingSuggestions ?? "").isEmpty
+    /// Whether the recipe has the reserved PCOS tag.
+    var hasPCOSTag: Bool {
+        tags.contains { $0.isPCOS }
     }
 
-    /// Fetches the full recipe + ingredients (the list may pass a lightweight row).
+    /// Fetches the full recipe + ingredients + tags (the list may pass a lightweight row).
     func load() async {
         do {
             async let recipeTask = repository.fetchRecipe(id: recipe.id)
             async let ingredientsTask = repository.fetchIngredients(recipeID: recipe.id)
-            let (fetched, fetchedIngredients) = try await (recipeTask, ingredientsTask)
+            async let tagsTask = tagsRepository.fetchRecipeTags(recipeID: recipe.id)
+            let (fetched, fetchedIngredients, fetchedTags) = try await (recipeTask, ingredientsTask, tagsTask)
             let wasAtBaseServings = (desiredServings == max(recipe.servings, 1))
             recipe = fetched
             isFavorite = fetched.isFavorite
             ingredients = fetchedIngredients
+            tags = fetchedTags
             if wasAtBaseServings {
                 desiredServings = max(fetched.servings, 1)
             }
