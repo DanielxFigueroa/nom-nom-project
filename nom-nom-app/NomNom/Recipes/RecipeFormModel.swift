@@ -23,22 +23,32 @@ struct IngredientDraft: Identifiable {
         return [qtyDisplay, unit, name].filter { !$0.isEmpty }.joined(separator: " ")
     }
 
-    private var formattedQuantity: String {
-        if let quantityValue {
-            switch quantityValue {
-            case 0.25: return "¼"
-            case 1.0 / 3.0: return "⅓"
-            case 0.5: return "½"
-            case 2.0 / 3.0: return "⅔"
-            case 0.75: return "¾"
-            case 1.5: return "1½"
-            case 2.5: return "2½"
-            default:
-                if quantityValue.truncatingRemainder(dividingBy: 1) == 0 {
-                    return String(Int(quantityValue))
-                }
-                return quantity
+    var numericQuantityString: String? {
+        if let val = quantityValue ?? Self.parseQuantityValue(quantity) {
+            if val.truncatingRemainder(dividingBy: 1) == 0 {
+                return String(Int(val))
+            } else {
+                let formatted = String(format: "%.3f", val)
+                return formatted.replacingOccurrences(of: "(?<=\\.\\d*?)0+$", with: "", options: .regularExpression)
+                                .replacingOccurrences(of: "\\.$", with: "", options: .regularExpression)
             }
+        }
+        return quantity.nilIfEmpty
+    }
+
+    private var formattedQuantity: String {
+        if let val = quantityValue ?? Self.parseQuantityValue(quantity) {
+            if abs(val - 0.25) < 0.001 { return "¼" }
+            if abs(val - 1.0 / 3.0) < 0.01 { return "⅓" }
+            if abs(val - 0.5) < 0.001 { return "½" }
+            if abs(val - 2.0 / 3.0) < 0.01 { return "⅔" }
+            if abs(val - 0.75) < 0.001 { return "¾" }
+            if abs(val - 1.5) < 0.001 { return "1½" }
+            if abs(val - 2.5) < 0.001 { return "2½" }
+            if val.truncatingRemainder(dividingBy: 1) == 0 {
+                return String(Int(val))
+            }
+            return String(val)
         }
         return quantity
     }
@@ -46,14 +56,20 @@ struct IngredientDraft: Identifiable {
     static func parseQuantityValue(_ qty: String) -> Double? {
         let trimmed = qty.trimmed
         switch trimmed {
-        case "¼": return 0.25
-        case "⅓": return 1.0 / 3.0
-        case "½": return 0.5
-        case "⅔": return 2.0 / 3.0
-        case "¾": return 0.75
-        case "1½": return 1.5
-        case "2½": return 2.5
-        default: return Double(trimmed)
+        case "¼", "1/4": return 0.25
+        case "⅓", "1/3": return 1.0 / 3.0
+        case "½", "1/2": return 0.5
+        case "⅔", "2/3": return 2.0 / 3.0
+        case "¾", "3/4": return 0.75
+        case "1½", "1 1/2": return 1.5
+        case "2½", "2 1/2": return 2.5
+        default:
+            if let val = Double(trimmed) {
+                if abs(val - 1.0 / 3.0) < 0.01 { return 1.0 / 3.0 }
+                if abs(val - 2.0 / 3.0) < 0.01 { return 2.0 / 3.0 }
+                return val
+            }
+            return nil
         }
     }
 }
@@ -207,7 +223,7 @@ final class RecipeFormModel {
             measurementSystem: measurementSystem
         )
         let ings = ingredients.map {
-            IngredientInput(name: $0.name, quantity: $0.quantity.nilIfEmpty, unit: $0.unit.nilIfEmpty)
+            IngredientInput(name: $0.name, quantity: $0.numericQuantityString, unit: $0.unit.nilIfEmpty)
         }
         return (input, ings)
     }
