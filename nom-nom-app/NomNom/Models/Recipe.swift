@@ -17,9 +17,10 @@ struct Recipe: Identifiable, Codable, Hashable {
     var createdAt: String?
     var ingredients: [Ingredient]?
     var measurementSystem: MeasurementSystem
+    var servings: Int
 
     enum CodingKeys: String, CodingKey {
-        case id, title, description, instructions, ingredients
+        case id, title, description, instructions, ingredients, servings
         case imageURL = "image_url"
         case householdId = "household_id"
         case isFavorite = "is_favorite"
@@ -41,7 +42,8 @@ struct Recipe: Identifiable, Codable, Hashable {
         mealTimingSuggestions: String? = nil,
         createdAt: String? = nil,
         ingredients: [Ingredient]? = nil,
-        measurementSystem: MeasurementSystem = .imperial
+        measurementSystem: MeasurementSystem = .imperial,
+        servings: Int = 4
     ) {
         self.id = id
         self.title = title
@@ -55,6 +57,7 @@ struct Recipe: Identifiable, Codable, Hashable {
         self.createdAt = createdAt
         self.ingredients = ingredients
         self.measurementSystem = measurementSystem
+        self.servings = servings
     }
 
     init(from decoder: Decoder) throws {
@@ -71,6 +74,7 @@ struct Recipe: Identifiable, Codable, Hashable {
         createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
         ingredients = try container.decodeIfPresent([Ingredient].self, forKey: .ingredients)
         measurementSystem = try container.decodeIfPresent(MeasurementSystem.self, forKey: .measurementSystem) ?? .imperial
+        servings = try container.decodeIfPresent(Int.self, forKey: .servings) ?? 4
     }
 }
 

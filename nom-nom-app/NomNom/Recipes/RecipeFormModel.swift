@@ -86,6 +86,7 @@ final class RecipeFormModel {
     // Step 1
     var title = ""
     var descriptionText = ""
+    var servings: Int = 4
     var insulinIndexNotes = ""
     var mealTimingSuggestions = ""
     var imageURLString: String?
@@ -122,13 +123,14 @@ final class RecipeFormModel {
     init(recipe: Recipe, ingredients: [Ingredient]) {
         title = recipe.title
         descriptionText = recipe.description ?? ""
+        servings = recipe.servings
         insulinIndexNotes = recipe.insulinIndexNotes ?? ""
         mealTimingSuggestions = recipe.mealTimingSuggestions ?? ""
         imageURLString = recipe.imageURL
         instructions = recipe.instructions ?? ""
         measurementSystem = recipe.measurementSystem
         self.ingredients = ingredients.map {
-            IngredientDraft(id: $0.id, name: $0.name, quantity: $0.quantity ?? "", unit: $0.unit ?? "")
+            IngredientDraft(id: $0.id, name: $0.name, quantity: $0.quantity ?? "", unit: $0.unit ?? "", quantityValue: $0.quantityValue)
         }
     }
 
@@ -220,10 +222,11 @@ final class RecipeFormModel {
             imageURL: (imageURLString?.nilIfEmpty) ?? Self.fallbackImageURL,
             insulinIndexNotes: insulinIndexNotes.trimmed.nilIfEmpty,
             mealTimingSuggestions: mealTimingSuggestions.trimmed.nilIfEmpty,
-            measurementSystem: measurementSystem
+            measurementSystem: measurementSystem,
+            servings: max(1, servings)
         )
         let ings = ingredients.map {
-            IngredientInput(name: $0.name, quantity: $0.numericQuantityString, unit: $0.unit.nilIfEmpty)
+            IngredientInput(name: $0.name, quantity: $0.numericQuantityString, unit: $0.unit.nilIfEmpty, quantityValue: $0.quantityValue)
         }
         return (input, ings)
     }
