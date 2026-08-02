@@ -8,16 +8,53 @@ struct IngredientDraft: Identifiable {
     var name: String
     var quantity: String
     var unit: String
+    var quantityValue: Double?
 
-    init(id: UUID = UUID(), name: String, quantity: String = "", unit: String = "") {
+    init(id: UUID = UUID(), name: String, quantity: String = "", unit: String = "", quantityValue: Double? = nil) {
         self.id = id
         self.name = name
         self.quantity = quantity
         self.unit = unit
+        self.quantityValue = quantityValue ?? Self.parseQuantityValue(quantity)
     }
 
     var displayLabel: String {
-        [quantity, unit, name].filter { !$0.isEmpty }.joined(separator: " ")
+        let qtyDisplay = formattedQuantity
+        return [qtyDisplay, unit, name].filter { !$0.isEmpty }.joined(separator: " ")
+    }
+
+    private var formattedQuantity: String {
+        if let quantityValue {
+            switch quantityValue {
+            case 0.25: return "¼"
+            case 1.0 / 3.0: return "⅓"
+            case 0.5: return "½"
+            case 2.0 / 3.0: return "⅔"
+            case 0.75: return "¾"
+            case 1.5: return "1½"
+            case 2.5: return "2½"
+            default:
+                if quantityValue.truncatingRemainder(dividingBy: 1) == 0 {
+                    return String(Int(quantityValue))
+                }
+                return quantity
+            }
+        }
+        return quantity
+    }
+
+    static func parseQuantityValue(_ qty: String) -> Double? {
+        let trimmed = qty.trimmed
+        switch trimmed {
+        case "¼": return 0.25
+        case "⅓": return 1.0 / 3.0
+        case "½": return 0.5
+        case "⅔": return 2.0 / 3.0
+        case "¾": return 0.75
+        case "1½": return 1.5
+        case "2½": return 2.5
+        default: return Double(trimmed)
+        }
     }
 }
 
@@ -40,10 +77,11 @@ final class RecipeFormModel {
     var isUploading = false
 
     // Step 2
+    var measurementSystem: MeasurementSystem = RegionDefaults.measurementSystem()
     var ingredients: [IngredientDraft] = []
     var ingName = ""
-    var ingQty = ""
-    var ingUnit = ""
+    var ingQtyOption: QtyOption? = nil
+    var ingUnit: RecipeUnit? = nil
 
     // Step 3
     var instructions = ""
@@ -72,6 +110,7 @@ final class RecipeFormModel {
         mealTimingSuggestions = recipe.mealTimingSuggestions ?? ""
         imageURLString = recipe.imageURL
         instructions = recipe.instructions ?? ""
+        measurementSystem = recipe.measurementSystem
         self.ingredients = ingredients.map {
             IngredientDraft(id: $0.id, name: $0.name, quantity: $0.quantity ?? "", unit: $0.unit ?? "")
         }
@@ -89,10 +128,17 @@ final class RecipeFormModel {
             errorMessage = "Ingredient name is required."
             return
         }
-        ingredients.append(IngredientDraft(name: name, quantity: ingQty.trimmed, unit: ingUnit.trimmed))
+        let qtyStr = ingQtyOption?.label ?? ""
+        let unitStr = ingUnit?.displayName ?? ""
+        ingredients.append(IngredientDraft(
+            name: name,
+            quantity: qtyStr,
+            unit: unitStr,
+            quantityValue: ingQtyOption?.value
+        ))
         ingName = ""
-        ingQty = ""
-        ingUnit = ""
+        ingQtyOption = nil
+        ingUnit = nil
     }
 
     func removeIngredient(_ draft: IngredientDraft) {
@@ -157,7 +203,8 @@ final class RecipeFormModel {
             instructions: instructions.trimmed,
             imageURL: (imageURLString?.nilIfEmpty) ?? Self.fallbackImageURL,
             insulinIndexNotes: insulinIndexNotes.trimmed.nilIfEmpty,
-            mealTimingSuggestions: mealTimingSuggestions.trimmed.nilIfEmpty
+            mealTimingSuggestions: mealTimingSuggestions.trimmed.nilIfEmpty,
+            measurementSystem: measurementSystem
         )
         let ings = ingredients.map {
             IngredientInput(name: $0.name, quantity: $0.quantity.nilIfEmpty, unit: $0.unit.nilIfEmpty)
@@ -165,3 +212,4 @@ final class RecipeFormModel {
         return (input, ings)
     }
 }
+

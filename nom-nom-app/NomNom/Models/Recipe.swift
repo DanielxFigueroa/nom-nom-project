@@ -16,6 +16,7 @@ struct Recipe: Identifiable, Codable, Hashable {
     /// so we avoid client-side date decoding. Parse on demand if displayed.
     var createdAt: String?
     var ingredients: [Ingredient]?
+    var measurementSystem: MeasurementSystem
 
     enum CodingKeys: String, CodingKey {
         case id, title, description, instructions, ingredients
@@ -25,5 +26,51 @@ struct Recipe: Identifiable, Codable, Hashable {
         case insulinIndexNotes = "insulin_index_notes"
         case mealTimingSuggestions = "meal_timing_suggestions"
         case createdAt = "created_at"
+        case measurementSystem = "measurement_system"
+    }
+
+    init(
+        id: UUID,
+        title: String,
+        description: String? = nil,
+        instructions: String? = nil,
+        imageURL: String? = nil,
+        householdId: UUID,
+        isFavorite: Bool = false,
+        insulinIndexNotes: String? = nil,
+        mealTimingSuggestions: String? = nil,
+        createdAt: String? = nil,
+        ingredients: [Ingredient]? = nil,
+        measurementSystem: MeasurementSystem = .imperial
+    ) {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.instructions = instructions
+        self.imageURL = imageURL
+        self.householdId = householdId
+        self.isFavorite = isFavorite
+        self.insulinIndexNotes = insulinIndexNotes
+        self.mealTimingSuggestions = mealTimingSuggestions
+        self.createdAt = createdAt
+        self.ingredients = ingredients
+        self.measurementSystem = measurementSystem
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        instructions = try container.decodeIfPresent(String.self, forKey: .instructions)
+        imageURL = try container.decodeIfPresent(String.self, forKey: .imageURL)
+        householdId = try container.decode(UUID.self, forKey: .householdId)
+        isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+        insulinIndexNotes = try container.decodeIfPresent(String.self, forKey: .insulinIndexNotes)
+        mealTimingSuggestions = try container.decodeIfPresent(String.self, forKey: .mealTimingSuggestions)
+        createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
+        ingredients = try container.decodeIfPresent([Ingredient].self, forKey: .ingredients)
+        measurementSystem = try container.decodeIfPresent(MeasurementSystem.self, forKey: .measurementSystem) ?? .imperial
     }
 }
+

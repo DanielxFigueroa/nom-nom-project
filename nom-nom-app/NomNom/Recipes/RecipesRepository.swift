@@ -9,6 +9,7 @@ struct RecipeInput {
     var imageURL: String
     var insulinIndexNotes: String?
     var mealTimingSuggestions: String?
+    var measurementSystem: MeasurementSystem = .imperial
 }
 
 struct IngredientInput {
@@ -92,6 +93,7 @@ struct RecipesRepository {
         let insulin_index_notes: String?
         let meal_timing_suggestions: String?
         let household_id: UUID
+        let measurement_system: String
     }
 
     private struct RecipeUpdate: Encodable {
@@ -101,6 +103,7 @@ struct RecipesRepository {
         let image_url: String
         let insulin_index_notes: String?
         let meal_timing_suggestions: String?
+        let measurement_system: String
     }
 
     private struct IngredientInsert: Encodable {
@@ -121,7 +124,8 @@ struct RecipesRepository {
             image_url: input.imageURL,
             insulin_index_notes: input.insulinIndexNotes,
             meal_timing_suggestions: input.mealTimingSuggestions,
-            household_id: householdID
+            household_id: householdID,
+            measurement_system: input.measurementSystem.rawValue
         )
         let created: IDRow = try await client
             .from("recipes")
@@ -141,7 +145,8 @@ struct RecipesRepository {
             instructions: input.instructions,
             image_url: input.imageURL,
             insulin_index_notes: input.insulinIndexNotes,
-            meal_timing_suggestions: input.mealTimingSuggestions
+            meal_timing_suggestions: input.mealTimingSuggestions,
+            measurement_system: input.measurementSystem.rawValue
         )
         try await client.from("recipes").update(row).eq("id", value: id).execute()
         // Replace ingredient rows: delete existing, then insert the new set.
