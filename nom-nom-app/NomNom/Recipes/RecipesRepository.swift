@@ -10,12 +10,14 @@ struct RecipeInput {
     var insulinIndexNotes: String?
     var mealTimingSuggestions: String?
     var measurementSystem: MeasurementSystem = .imperial
+    var servings: Int = 4
 }
 
 struct IngredientInput {
     var name: String
     var quantity: String?
     var unit: String?
+    var quantityValue: Double? = nil
 }
 
 /// Data access for recipes/ingredients (see SPEC.md §1, §5). Mirrors the Supabase
@@ -94,6 +96,7 @@ struct RecipesRepository {
         let meal_timing_suggestions: String?
         let household_id: UUID
         let measurement_system: String
+        let servings: Int
     }
 
     private struct RecipeUpdate: Encodable {
@@ -104,6 +107,7 @@ struct RecipesRepository {
         let insulin_index_notes: String?
         let meal_timing_suggestions: String?
         let measurement_system: String
+        let servings: Int
     }
 
     private struct IngredientInsert: Encodable {
@@ -111,6 +115,7 @@ struct RecipesRepository {
         let name: String
         let quantity: String?
         let unit: String?
+        let quantity_value: Double?
     }
 
     private struct IDRow: Decodable { let id: UUID }
@@ -125,7 +130,8 @@ struct RecipesRepository {
             insulin_index_notes: input.insulinIndexNotes,
             meal_timing_suggestions: input.mealTimingSuggestions,
             household_id: householdID,
-            measurement_system: input.measurementSystem.rawValue
+            measurement_system: input.measurementSystem.rawValue,
+            servings: input.servings
         )
         let created: IDRow = try await client
             .from("recipes")
@@ -146,7 +152,8 @@ struct RecipesRepository {
             image_url: input.imageURL,
             insulin_index_notes: input.insulinIndexNotes,
             meal_timing_suggestions: input.mealTimingSuggestions,
-            measurement_system: input.measurementSystem.rawValue
+            measurement_system: input.measurementSystem.rawValue,
+            servings: input.servings
         )
         try await client.from("recipes").update(row).eq("id", value: id).execute()
         // Replace ingredient rows: delete existing, then insert the new set.
@@ -162,7 +169,7 @@ struct RecipesRepository {
     private func insertIngredients(_ ingredients: [IngredientInput], recipeID: UUID) async throws {
         guard !ingredients.isEmpty else { return }
         let rows = ingredients.map {
-            IngredientInsert(recipe_id: recipeID, name: $0.name, quantity: $0.quantity, unit: $0.unit)
+            IngredientInsert(recipe_id: recipeID, name: $0.name, quantity: $0.quantity, unit: $0.unit, quantity_value: $0.quantityValue)
         }
         try await client.from("ingredients").insert(rows).execute()
     }

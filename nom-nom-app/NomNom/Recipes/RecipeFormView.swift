@@ -77,6 +77,14 @@ struct RecipeFormView: View {
                     .lineLimit(3...6)
                     .textFieldStyle(.roundedBorder)
             }
+            labeledField("Servings") {
+                Stepper(value: $model.servings, in: 1...100) {
+                    Text("\(model.servings) \(model.servings == 1 ? "serving" : "servings")")
+                        .font(.body)
+                }
+                .padding(8)
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
+            }
             labeledField("Insulin Index Notes (Optional)") {
                 TextField("Notes on glycemic & insulin impact...", text: $model.insulinIndexNotes, axis: .vertical)
                     .lineLimit(2...5)

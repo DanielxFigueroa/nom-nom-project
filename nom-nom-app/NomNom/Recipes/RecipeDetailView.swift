@@ -1,8 +1,8 @@
 import SwiftUI
 import MarkdownUI
 
-/// Recipe detail: hero image, ingredient checklist, markdown instructions, PCOS
-/// cards, favorite toggle, owner-only edit (SPEC.md §4). Ports RN `app/modal.tsx`.
+/// Recipe detail: hero image, ingredient checklist with serving scaling, markdown
+/// instructions, PCOS cards, favorite toggle, owner-only edit (SPEC.md §4).
 struct RecipeDetailView: View {
     @Environment(AuthModel.self) private var auth
     @Environment(RecipesRefresh.self) private var recipesRefresh
@@ -104,23 +104,65 @@ struct RecipeDetailView: View {
 
     private var ingredientsSection: some View {
         section("Ingredients") {
-            VStack(spacing: 0) {
-                ForEach(model.ingredients) { ingredient in
-                    ingredientRow(ingredient)
-                    if ingredient.id != model.ingredients.last?.id {
-                        Divider()
+            VStack(alignment: .leading, spacing: 12) {
+                servingsStepperHeader
+
+                if model.hasLegacyUnscalableIngredients && model.isServingScaled {
+                    HStack(spacing: 6) {
+                        Image(systemName: "info.circle")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("Scaling unavailable for legacy ingredients without numeric quantity.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 4)
+                }
+
+                VStack(spacing: 0) {
+                    ForEach(model.ingredients) { ingredient in
+                        ingredientRow(ingredient)
+                        if ingredient.id != model.ingredients.last?.id {
+                            Divider()
+                        }
                     }
                 }
             }
         }
     }
 
+    private var servingsStepperHeader: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Servings")
+                    .font(.subheadline.weight(.semibold))
+                Text("Serves \(model.desiredServings) · base \(model.recipe.servings)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            if model.isServingScaled {
+                Button("Reset") {
+                    model.resetServings()
+                }
+                .font(.caption.weight(.semibold))
+                .buttonStyle(.bordered)
+                .tint(.nnTint)
+                .controlSize(.small)
+            }
+
+            Stepper("", value: $model.desiredServings, in: 1...100)
+                .labelsHidden()
+        }
+        .padding(12)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+    }
+
     private func ingredientRow(_ ingredient: Ingredient) -> some View {
         let checked = model.checkedIDs.contains(ingredient.id)
-        let label = [ingredient.quantity, ingredient.unit, ingredient.name]
-            .compactMap { $0 }
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
+        let label = model.formattedLabel(for: ingredient)
         return Button {
             model.toggleChecked(ingredient.id)
         } label: {
