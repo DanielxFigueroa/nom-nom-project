@@ -6,9 +6,14 @@ create table tags (
   household_id uuid not null references households(id) on delete cascade,
   name text not null,
   is_pcos boolean not null default false,
-  created_at timestamptz not null default now(),
-  unique (household_id, lower(name))
+  created_at timestamptz not null default now()
 );
+
+-- Case-insensitive uniqueness of tag names within a household.
+-- Must be a functional unique index; expressions aren't allowed in a
+-- table-level UNIQUE constraint.
+create unique index tags_household_id_lower_name_key
+  on tags (household_id, lower(name));
 
 create table recipe_tags (
   recipe_id uuid not null references recipes(id) on delete cascade,
