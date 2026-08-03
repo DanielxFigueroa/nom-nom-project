@@ -87,11 +87,16 @@ final class RecipeFormModel {
     var title = ""
     var descriptionText = ""
     var servings: Int = 4
-    var insulinIndexNotes = ""
-    var mealTimingSuggestions = ""
     var imageURLString: String?
     var pickedImage: Image?
     var isUploading = false
+
+    // Tags
+    var selectedTagIDs: Set<UUID> = []
+    var isPCOS: Bool = false
+    var availableTags: [Tag] = []
+    var pcosTag: Tag?
+    var newTagName = ""
 
     // Step 2
     var measurementSystem: MeasurementSystem = RegionDefaults.measurementSystem()
@@ -107,6 +112,7 @@ final class RecipeFormModel {
     var errorMessage: String?
 
     private let storage = StorageService()
+    private let tagsRepository = TagsRepository()
 
     static let fallbackImageURL = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400"
 
@@ -120,18 +126,19 @@ final class RecipeFormModel {
 
     init() {}
 
-    init(recipe: Recipe, ingredients: [Ingredient]) {
+    init(recipe: Recipe, ingredients: [Ingredient], recipeTags: [Tag] = []) {
         title = recipe.title
         descriptionText = recipe.description ?? ""
         servings = recipe.servings
-        insulinIndexNotes = recipe.insulinIndexNotes ?? ""
-        mealTimingSuggestions = recipe.mealTimingSuggestions ?? ""
         imageURLString = recipe.imageURL
         instructions = recipe.instructions ?? ""
         measurementSystem = recipe.measurementSystem
         self.ingredients = ingredients.map {
             IngredientDraft(id: $0.id, name: $0.name, quantity: $0.quantity ?? "", unit: $0.unit ?? "", quantityValue: $0.quantityValue)
         }
+        // Populate tag state from existing recipe tags.
+        selectedTagIDs = Set(recipeTags.map { $0.id })
+        isPCOS = recipeTags.contains { $0.isPCOS }
     }
 
     func isSeafood(_ name: String) -> Bool {
@@ -215,20 +222,82 @@ final class RecipeFormModel {
             errorMessage = "Recipe instructions are required."
             return nil
         }
+        // Build final tag ID list: include selected tags, and ensure the PCOS
+        // tag is added/removed based on the toggle.
+        var finalTagIDs = selectedTagIDs
+        if let pcosTag {
+            if isPCOS {
+                finalTagIDs.insert(pcosTag.id)
+            } else {
+                finalTagIDs.remove(pcosTag.id)
+            }
+        }
         let input = RecipeInput(
             title: title.trimmed,
             description: descriptionText.trimmed,
             instructions: instructions.trimmed,
             imageURL: (imageURLString?.nilIfEmpty) ?? Self.fallbackImageURL,
-            insulinIndexNotes: insulinIndexNotes.trimmed.nilIfEmpty,
-            mealTimingSuggestions: mealTimingSuggestions.trimmed.nilIfEmpty,
             measurementSystem: measurementSystem,
-            servings: max(1, servings)
+            servings: max(1, servings),
+            tagIDs: Array(finalTagIDs)
         )
         let ings = ingredients.map {
             IngredientInput(name: $0.name, quantity: $0.numericQuantityString, unit: $0.unit.nilIfEmpty, quantityValue: $0.quantityValue)
         }
         return (input, ings)
+    }
+
+    // MARK: - Tag Management
+
+    /// Loads available household tags and ensures the reserved PCOS tag exists.
+    func loadTags(householdID: UUID) async {
+        do {
+            let pcos = try await tagsRepository.ensurePCOSTag(householdID: householdID)
+            pcosTag = pcos
+            availableTags = try await tagsRepository.fetchTags(householdID: householdID)
+        } catch {
+            // Tags are non-critical; the form can still work without them.
+        }
+    }
+
+    /// Loads the tags that are currently on a recipe (for edit mode).
+    func loadRecipeTags(recipeID: UUID) async {
+        do {
+            let tags = try await tagsRepository.fetchRecipeTags(recipeID: recipeID)
+            selectedTagIDs = Set(tags.map { $0.id })
+            isPCOS = tags.contains { $0.isPCOS }
+        } catch {
+            // Non-critical.
+        }
+    }
+
+    /// Creates a new tag inline and adds it to the selection.
+    func createAndSelectTag(householdID: UUID) async {
+        let name = newTagName.trimmed
+        guard !name.isEmpty else { return }
+        do {
+            let tag = try await tagsRepository.createTag(name: name, householdID: householdID)
+            availableTags.append(tag)
+            selectedTagIDs.insert(tag.id)
+            newTagName = ""
+        } catch {
+            errorMessage = "Failed to create tag."
+        }
+    }
+
+    func toggleTag(_ tagID: UUID) {
+        if selectedTagIDs.contains(tagID) {
+            selectedTagIDs.remove(tagID)
+            // If it's the PCOS tag, also toggle the flag.
+            if tagID == pcosTag?.id {
+                isPCOS = false
+            }
+        } else {
+            selectedTagIDs.insert(tagID)
+            if tagID == pcosTag?.id {
+                isPCOS = true
+            }
+        }
     }
 }
 

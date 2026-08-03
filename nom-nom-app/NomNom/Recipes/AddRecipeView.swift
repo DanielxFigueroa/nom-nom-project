@@ -20,8 +20,19 @@ struct AddRecipeView: View {
             )
             .navigationTitle("Add Recipe")
             .navigationBarTitleDisplayMode(.inline)
+            .task {
+                if let householdID = auth.householdId {
+                    await model.loadTags(householdID: householdID)
+                }
+            }
             .alert("Success", isPresented: $showSuccess) {
-                Button("OK") { model = RecipeFormModel() } // reset for the next recipe
+                Button("OK") {
+                    model = RecipeFormModel()
+                    // Reload tags for the fresh form.
+                    if let householdID = auth.householdId {
+                        Task { await model.loadTags(householdID: householdID) }
+                    }
+                }
             } message: {
                 Text("Recipe added successfully!")
             }
