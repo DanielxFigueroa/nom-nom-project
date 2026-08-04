@@ -28,11 +28,11 @@ struct RecipesRepository {
 
     // MARK: - Fetch
 
-    /// Household-scoped recipes with joined ingredients, newest first.
+    /// Household-scoped recipes with joined ingredients and tags, newest first.
     func fetchRecipes(householdID: UUID, onlyFavorites: Bool = false) async throws -> [Recipe] {
         var query = client
             .from("recipes")
-            .select("*, ingredients(*)")
+            .select("*, ingredients(*), tags(*)")
             .eq("household_id", value: householdID)
         if onlyFavorites {
             query = query.eq("is_favorite", value: true)

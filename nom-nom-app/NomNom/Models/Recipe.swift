@@ -16,11 +16,12 @@ struct Recipe: Identifiable, Codable, Hashable {
     /// so we avoid client-side date decoding. Parse on demand if displayed.
     var createdAt: String?
     var ingredients: [Ingredient]?
+    var tags: [Tag]?
     var measurementSystem: MeasurementSystem
     var servings: Int
 
     enum CodingKeys: String, CodingKey {
-        case id, title, description, instructions, ingredients, servings
+        case id, title, description, instructions, ingredients, tags, servings
         case imageURL = "image_url"
         case householdId = "household_id"
         case isFavorite = "is_favorite"
@@ -42,6 +43,7 @@ struct Recipe: Identifiable, Codable, Hashable {
         mealTimingSuggestions: String? = nil,
         createdAt: String? = nil,
         ingredients: [Ingredient]? = nil,
+        tags: [Tag]? = nil,
         measurementSystem: MeasurementSystem = .imperial,
         servings: Int = 4
     ) {
@@ -56,6 +58,7 @@ struct Recipe: Identifiable, Codable, Hashable {
         self.mealTimingSuggestions = mealTimingSuggestions
         self.createdAt = createdAt
         self.ingredients = ingredients
+        self.tags = tags
         self.measurementSystem = measurementSystem
         self.servings = servings
     }
@@ -73,8 +76,10 @@ struct Recipe: Identifiable, Codable, Hashable {
         mealTimingSuggestions = try container.decodeIfPresent(String.self, forKey: .mealTimingSuggestions)
         createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
         ingredients = try container.decodeIfPresent([Ingredient].self, forKey: .ingredients)
+        tags = try container.decodeIfPresent([Tag].self, forKey: .tags)
         measurementSystem = try container.decodeIfPresent(MeasurementSystem.self, forKey: .measurementSystem) ?? .imperial
         servings = try container.decodeIfPresent(Int.self, forKey: .servings) ?? 4
     }
 }
+
 
