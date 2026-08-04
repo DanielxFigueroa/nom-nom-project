@@ -14,17 +14,33 @@ struct ExploreView: View {
         NavigationStack {
             VStack(spacing: 8) {
                 SearchBar(text: $model.searchQuery)
+                if !model.availableTags.isEmpty {
+                    tagChipStrip
+                }
                 content
             }
             .navigationTitle("Explore")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showAccount = true
-                    } label: {
-                        Image(systemName: "person.crop.circle")
+                    HStack(spacing: 16) {
+                        Menu {
+                            Picker("Sort", selection: $model.sort) {
+                                ForEach(RecipeSort.allCases) { option in
+                                    Text(option.displayName).tag(option)
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "arrow.up.arrow.down")
+                        }
+                        .accessibilityLabel("Sort")
+
+                        Button {
+                            showAccount = true
+                        } label: {
+                            Image(systemName: "person.crop.circle")
+                        }
+                        .accessibilityLabel("Account")
                     }
-                    .accessibilityLabel("Account")
                 }
             }
             .sheet(isPresented: $showAccount) {
@@ -34,6 +50,40 @@ struct ExploreView: View {
         .onAppear { Task { await model.load(householdID: auth.householdId) } }
         .onChange(of: recipesRefresh.token) {
             Task { await model.load(householdID: auth.householdId) }
+        }
+    }
+
+    private var tagChipStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(model.availableTags) { tag in
+                    let isSelected = model.selectedTagIDs.contains(tag.id)
+                    Button {
+                        model.toggleTagSelection(tag.id)
+                    } label: {
+                        HStack(spacing: 4) {
+                            if tag.isPCOS {
+                                Image(systemName: "sparkles")
+                                    .font(.caption2)
+                            }
+                            Text(tag.name)
+                                .font(.subheadline)
+                                .fontWeight(isSelected ? .semibold : .regular)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            isSelected
+                            ? (tag.isPCOS ? Color.nnTint : Color.accentColor)
+                            : Color(.secondarySystemBackground)
+                        )
+                        .foregroundColor(isSelected ? .white : .primary)
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal)
         }
     }
 
@@ -57,10 +107,19 @@ struct ExploreView: View {
                 systemImage: "fork.knife"
             )
         } else if model.filteredRecipes.isEmpty {
-            ContentUnavailableView.search(text: model.searchQuery)
+            if !model.searchQuery.isEmpty {
+                ContentUnavailableView.search(text: model.searchQuery)
+            } else {
+                ContentUnavailableView(
+                    "No Matching Recipes",
+                    systemImage: "line.3.horizontal.decrease.circle",
+                    description: Text("Try clearing your tag filters or changing your search terms.")
+                )
+            }
         } else {
             RecipeMasonry(recipes: model.filteredRecipes)
                 .refreshable { await model.load(householdID: auth.householdId) }
         }
     }
 }
+
