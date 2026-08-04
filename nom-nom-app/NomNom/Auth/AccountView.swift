@@ -5,6 +5,7 @@ import SwiftUI
 struct AccountView: View {
     @Environment(AuthModel.self) private var auth
     @Environment(\.dismiss) private var dismiss
+    @State private var showFolders = false
 
     var body: some View {
         NavigationStack {
@@ -17,6 +18,16 @@ struct AccountView: View {
                 Section("Household") {
                     LabeledContent("Household ID", value: auth.householdId?.uuidString ?? "—")
                         .textSelection(.enabled)
+                }
+                if let householdID = auth.householdId {
+                    Section("Folders") {
+                        Button {
+                            showFolders = true
+                        } label: {
+                            Label("Manage Folders", systemImage: "folder")
+                                .foregroundStyle(Color.primary)
+                        }
+                    }
                 }
                 Section {
                     Button(role: .destructive) {
@@ -34,6 +45,11 @@ struct AccountView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
+                }
+            }
+            .sheet(isPresented: $showFolders) {
+                if let householdID = auth.householdId {
+                    FolderManagerView(householdID: householdID)
                 }
             }
         }

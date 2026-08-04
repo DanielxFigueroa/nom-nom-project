@@ -104,9 +104,27 @@ struct RecipeFormView: View {
             // Tag Editor
             tagEditorSection
 
+            // Folder Selection
+            folderPickerSection
+
             labeledField("Cover Image") {
                 imagePicker
             }
+        }
+    }
+
+    private var folderPickerSection: some View {
+        labeledField("Folder") {
+            Picker("Folder", selection: $model.selectedFolderID) {
+                Text("None (Un-filed)").tag(UUID?.none)
+                ForEach(model.availableFolders.buildTree()) { df in
+                    Text(String(repeating: "  ", count: df.depth) + df.name).tag(UUID?.some(df.id))
+                }
+            }
+            .pickerStyle(.menu)
+            .padding(4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
         }
     }
 

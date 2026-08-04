@@ -9,6 +9,7 @@ struct RecipeDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: RecipeDetailModel
     @State private var showEdit = false
+    @State private var showFolderPicker = false
 
     init(recipe: Recipe) {
         _model = State(initialValue: RecipeDetailModel(recipe: recipe))
@@ -25,6 +26,8 @@ struct RecipeDetailView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     Text(model.recipe.title)
                         .font(.title.bold())
+
+                    folderSection
 
                     // Tag chips
                     if !model.tags.isEmpty {
@@ -67,6 +70,13 @@ struct RecipeDetailView: View {
 
                 if isOwner {
                     Button {
+                        showFolderPicker = true
+                    } label: {
+                        Image(systemName: "folder.badge.plus")
+                    }
+                    .accessibilityLabel("Move to folder")
+
+                    Button {
                         showEdit = true
                     } label: {
                         Image(systemName: "square.and.pencil")
@@ -76,6 +86,20 @@ struct RecipeDetailView: View {
             }
         }
         .task { await model.load() }
+        .sheet(isPresented: $showFolderPicker) {
+            if let householdID = auth.householdId {
+                FolderPickerSheet(
+                    currentFolderID: model.recipe.folderId,
+                    householdID: householdID,
+                    onSelectFolder: { folderID in
+                        Task {
+                            await model.moveToFolder(folderID)
+                            recipesRefresh.trigger()
+                        }
+                    }
+                )
+            }
+        }
         .sheet(isPresented: $showEdit) {
             NavigationStack {
                 EditRecipeView(
@@ -95,6 +119,28 @@ struct RecipeDetailView: View {
                 )
             }
         }
+    }
+
+    private var folderSection: some View {
+        Button {
+            showFolderPicker = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "folder.fill")
+                    .font(.caption)
+                    .foregroundStyle(Color.nnTint)
+                Text(model.currentFolder?.name ?? "Move to folder…")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(model.currentFolder != nil ? Color.primary : Color.secondary)
+                Image(systemName: "chevron.right")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color(.secondarySystemBackground), in: Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     private var heroImage: some View {
