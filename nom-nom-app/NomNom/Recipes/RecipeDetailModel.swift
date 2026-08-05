@@ -8,6 +8,7 @@ final class RecipeDetailModel {
     var recipe: Recipe
     var ingredients: [Ingredient] = []
     var tags: [Tag] = []
+    var currentFolder: Folder?
     var checkedIDs: Set<UUID> = []
     var isFavorite: Bool
     var isLoading = true
@@ -15,6 +16,7 @@ final class RecipeDetailModel {
 
     private let repository = RecipesRepository()
     private let tagsRepository = TagsRepository()
+    private let foldersRepository = FoldersRepository()
 
     init(recipe: Recipe) {
         self.recipe = recipe
@@ -60,7 +62,7 @@ final class RecipeDetailModel {
         tags.contains { $0.isPCOS }
     }
 
-    /// Fetches the full recipe + ingredients + tags (the list may pass a lightweight row).
+    /// Fetches the full recipe + ingredients + tags + folder.
     func load() async {
         do {
             async let recipeTask = repository.fetchRecipe(id: recipe.id)
@@ -75,10 +77,25 @@ final class RecipeDetailModel {
             if wasAtBaseServings {
                 desiredServings = max(fetched.servings, 1)
             }
+            if let fId = fetched.folderId {
+                let allFolders = (try? await foldersRepository.fetchFolders(householdID: fetched.householdId)) ?? []
+                currentFolder = allFolders.first { $0.id == fId }
+            } else {
+                currentFolder = nil
+            }
         } catch {
             // Keep whatever we already have from the list row.
         }
         isLoading = false
+    }
+
+    func moveToFolder(_ folderID: UUID?) async {
+        do {
+            try await foldersRepository.moveRecipe(recipeID: recipe.id, toFolder: folderID)
+            await load()
+        } catch {
+            // Non-fatal
+        }
     }
 
     func toggleChecked(_ id: UUID) {

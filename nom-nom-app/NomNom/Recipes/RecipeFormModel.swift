@@ -98,6 +98,10 @@ final class RecipeFormModel {
     var pcosTag: Tag?
     var newTagName = ""
 
+    // Folders
+    var selectedFolderID: UUID?
+    var availableFolders: [Folder] = []
+
     // Step 2
     var measurementSystem: MeasurementSystem = RegionDefaults.measurementSystem()
     var ingredients: [IngredientDraft] = []
@@ -113,6 +117,7 @@ final class RecipeFormModel {
 
     private let storage = StorageService()
     private let tagsRepository = TagsRepository()
+    private let foldersRepository = FoldersRepository()
 
     static let fallbackImageURL = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400"
 
@@ -133,6 +138,7 @@ final class RecipeFormModel {
         imageURLString = recipe.imageURL
         instructions = recipe.instructions ?? ""
         measurementSystem = recipe.measurementSystem
+        selectedFolderID = recipe.folderId
         self.ingredients = ingredients.map {
             IngredientDraft(id: $0.id, name: $0.name, quantity: $0.quantity ?? "", unit: $0.unit ?? "", quantityValue: $0.quantityValue)
         }
@@ -239,7 +245,8 @@ final class RecipeFormModel {
             imageURL: (imageURLString?.nilIfEmpty) ?? Self.fallbackImageURL,
             measurementSystem: measurementSystem,
             servings: max(1, servings),
-            tagIDs: Array(finalTagIDs)
+            tagIDs: Array(finalTagIDs),
+            folderID: selectedFolderID
         )
         let ings = ingredients.map {
             IngredientInput(name: $0.name, quantity: $0.numericQuantityString, unit: $0.unit.nilIfEmpty, quantityValue: $0.quantityValue)
@@ -247,16 +254,17 @@ final class RecipeFormModel {
         return (input, ings)
     }
 
-    // MARK: - Tag Management
+    // MARK: - Tag & Folder Management
 
-    /// Loads available household tags and ensures the reserved PCOS tag exists.
+    /// Loads available household tags, folders, and ensures the reserved PCOS tag exists.
     func loadTags(householdID: UUID) async {
         do {
             let pcos = try await tagsRepository.ensurePCOSTag(householdID: householdID)
             pcosTag = pcos
             availableTags = try await tagsRepository.fetchTags(householdID: householdID)
+            availableFolders = try await foldersRepository.fetchFolders(householdID: householdID)
         } catch {
-            // Tags are non-critical; the form can still work without them.
+            // Tags/Folders are non-critical; the form can still work without them.
         }
     }
 

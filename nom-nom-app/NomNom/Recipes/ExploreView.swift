@@ -7,6 +7,7 @@ struct ExploreView: View {
     @Environment(RecipesRefresh.self) private var recipesRefresh
     @State private var model = ExploreModel()
     @State private var showAccount = false
+    @State private var showFolders = false
 
     var body: some View {
         @Bindable var model = model
@@ -35,12 +36,24 @@ struct ExploreView: View {
                         .accessibilityLabel("Sort")
 
                         Button {
+                            showFolders = true
+                        } label: {
+                            Image(systemName: "folder")
+                        }
+                        .accessibilityLabel("Folders")
+
+                        Button {
                             showAccount = true
                         } label: {
                             Image(systemName: "person.crop.circle")
                         }
                         .accessibilityLabel("Account")
                     }
+                }
+            }
+            .sheet(isPresented: $showFolders) {
+                if let householdID = auth.householdId {
+                    FolderManagerView(householdID: householdID)
                 }
             }
             .sheet(isPresented: $showAccount) {
