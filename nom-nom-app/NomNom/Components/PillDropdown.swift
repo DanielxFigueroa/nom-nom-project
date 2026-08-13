@@ -1,17 +1,15 @@
 import SwiftUI
 
-/// A reusable pill-shaped dropdown menu matching the Collectr reference design.
+/// A reusable pill-shaped control matching the Collectr reference design.
 /// Displays a leading SF symbol, label text, and trailing chevron.
-struct PillDropdown<Content: View>: View {
+struct PillDropdown: View {
     let icon: String
     let label: String
     let isActive: Bool
-    @ViewBuilder let content: () -> Content
+    let action: () -> Void
 
     var body: some View {
-        Menu {
-            content()
-        } label: {
+        Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: icon)
                     .font(.subheadline)
@@ -30,6 +28,7 @@ struct PillDropdown<Content: View>: View {
             )
             .foregroundColor(isActive ? .white : .primary)
             .clipShape(Capsule())
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
     }
