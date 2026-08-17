@@ -30,6 +30,8 @@ struct HouseholdSetupView: View {
                     Text("Start fresh and invite others to join your meal plan.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    TextField("Household name (optional)", text: $model.name)
+                        .textFieldStyle(.roundedBorder)
                     Button {
                         Task { await model.createHousehold(auth: auth) }
                     } label: {

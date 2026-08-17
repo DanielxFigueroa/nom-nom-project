@@ -6,6 +6,7 @@ import Observation
 @MainActor
 @Observable
 final class HouseholdSetupModel {
+    var name = ""
     var inviteCode = ""
     var isLoading = false
     var errorMessage: String?
@@ -17,7 +18,7 @@ final class HouseholdSetupModel {
         isLoading = true
         errorMessage = nil
         do {
-            let householdID = try await repository.createHousehold()
+            let householdID = try await repository.createHousehold(name: name)
             try await repository.linkProfile(userID: userID, householdID: householdID)
             await auth.refreshProfile()
             // On success RootView swaps this view out; no need to reset isLoading.

@@ -6,11 +6,15 @@ import Supabase
 struct HouseholdRepository {
     private let client = SupabaseManager.shared
 
-    /// Creates a new household with a random invite code; returns its id.
-    func createHousehold() async throws -> UUID {
+    /// Creates a new household with a random invite code and optional name; returns its id.
+    func createHousehold(name: String? = nil) async throws -> UUID {
+        var payload: [String: String] = ["invite_code": InviteCode.generate()]
+        if let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty {
+            payload["name"] = trimmed
+        }
         let household: Household = try await client
             .from("households")
-            .insert(["invite_code": InviteCode.generate()])
+            .insert(payload)
             .select()
             .single()
             .execute()

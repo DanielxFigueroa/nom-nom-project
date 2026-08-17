@@ -4,9 +4,11 @@ import Foundation
 struct Household: Identifiable, Codable, Hashable {
     let id: UUID
     var inviteCode: String
+    var name: String?
 
     enum CodingKeys: String, CodingKey {
         case id
         case inviteCode = "invite_code"
+        case name
     }
 }
