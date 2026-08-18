@@ -11,12 +11,16 @@ import Supabase
 final class AuthModel {
     var session: Session?
     var householdId: UUID?
+    var joinedHouseholds: [Household] = []
     var isLoading = true
 
     var user: User? { session?.user }
     var isAuthenticated: Bool { session != nil }
 
+    var joinedHouseholdIds: [UUID] { joinedHouseholds.map(\.id) }
+
     private let client = SupabaseManager.shared
+    private let householdRepository = HouseholdRepository()
 
     /// Call once at app launch. Restores any persisted session, resolves the
     /// household, then keeps observing auth-state changes.
@@ -32,6 +36,7 @@ final class AuthModel {
                 await refreshProfile()
             case .signedOut:
                 householdId = nil
+                joinedHouseholds = []
             default:
                 break
             }
@@ -43,6 +48,7 @@ final class AuthModel {
     func refreshProfile() async {
         guard let userID = user?.id else {
             householdId = nil
+            joinedHouseholds = []
             return
         }
         do {
@@ -56,6 +62,19 @@ final class AuthModel {
             householdId = profile?.householdId
         } catch {
             householdId = nil
+        }
+        await refreshJoinedHouseholds()
+    }
+
+    func refreshJoinedHouseholds() async {
+        guard let userID = user?.id else {
+            joinedHouseholds = []
+            return
+        }
+        do {
+            joinedHouseholds = try await householdRepository.fetchJoinedHouseholds(userID: userID)
+        } catch {
+            joinedHouseholds = []
         }
     }
 
@@ -74,5 +93,8 @@ final class AuthModel {
     /// Not present in the RN app — added per SPEC.md §5.
     func signOut() async {
         try? await client.auth.signOut()
+        session = nil
+        householdId = nil
+        joinedHouseholds = []
     }
 }
