@@ -18,7 +18,7 @@ final class HouseholdSetupModel {
         isLoading = true
         errorMessage = nil
         do {
-            let householdID = try await repository.createHousehold(name: name)
+            let householdID = try await repository.createHousehold(name: name, userID: userID)
             try await repository.linkProfile(userID: userID, householdID: householdID)
             await auth.refreshProfile()
             // On success RootView swaps this view out; no need to reset isLoading.
@@ -37,7 +37,7 @@ final class HouseholdSetupModel {
         isLoading = true
         errorMessage = nil
         do {
-            guard let householdID = try await repository.findHousehold(inviteCode: inviteCode) else {
+            guard let householdID = try await repository.findHousehold(inviteCode: inviteCode, userID: userID) else {
                 errorMessage = "Could not find a household with that invite code."
                 isLoading = false
                 return
