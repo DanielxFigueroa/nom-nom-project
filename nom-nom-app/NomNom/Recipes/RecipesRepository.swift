@@ -50,6 +50,29 @@ struct RecipesRepository {
         try await fetchRecipes(householdIDs: [householdID], onlyFavorites: onlyFavorites)
     }
 
+    private struct RecipeHouseholdID: Decodable {
+        let householdId: UUID
+        enum CodingKeys: String, CodingKey {
+            case householdId = "household_id"
+        }
+    }
+
+    /// Returns a map of household ID -> recipe count for the given household IDs.
+    func fetchRecipeCounts(householdIDs: [UUID]) async throws -> [UUID: Int] {
+        guard !householdIDs.isEmpty else { return [:] }
+        let rows: [RecipeHouseholdID] = try await client
+            .from("recipes")
+            .select("household_id")
+            .in("household_id", values: householdIDs)
+            .execute()
+            .value
+        var counts: [UUID: Int] = [:]
+        for row in rows {
+            counts[row.householdId, default: 0] += 1
+        }
+        return counts
+    }
+
     func fetchRecipe(id: UUID) async throws -> Recipe {
         try await client
             .from("recipes")
