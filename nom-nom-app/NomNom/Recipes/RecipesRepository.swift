@@ -29,12 +29,13 @@ struct RecipesRepository {
 
     // MARK: - Fetch
 
-    /// Household-scoped recipes with joined ingredients and tags, newest first.
-    func fetchRecipes(householdID: UUID, onlyFavorites: Bool = false) async throws -> [Recipe] {
+    /// Multi-household-scoped recipes with joined ingredients and tags, newest first.
+    func fetchRecipes(householdIDs: [UUID], onlyFavorites: Bool = false) async throws -> [Recipe] {
+        guard !householdIDs.isEmpty else { return [] }
         var query = client
             .from("recipes")
             .select("*, ingredients(*), tags(*)")
-            .eq("household_id", value: householdID)
+            .in("household_id", values: householdIDs)
         if onlyFavorites {
             query = query.eq("is_favorite", value: true)
         }
@@ -42,6 +43,11 @@ struct RecipesRepository {
             .order("created_at", ascending: false)
             .execute()
             .value
+    }
+
+    /// Household-scoped recipes with joined ingredients and tags, newest first.
+    func fetchRecipes(householdID: UUID, onlyFavorites: Bool = false) async throws -> [Recipe] {
+        try await fetchRecipes(householdIDs: [householdID], onlyFavorites: onlyFavorites)
     }
 
     func fetchRecipe(id: UUID) async throws -> Recipe {

@@ -10,16 +10,20 @@ final class FavoritesModel {
 
     private let repository = RecipesRepository()
 
-    func load(householdID: UUID?) async {
-        guard let householdID else {
+    func load(householdIDs: [UUID]) async {
+        guard !householdIDs.isEmpty else {
             isLoading = false
             return
         }
         do {
-            recipes = try await repository.fetchRecipes(householdID: householdID, onlyFavorites: true)
+            recipes = try await repository.fetchRecipes(householdIDs: householdIDs, onlyFavorites: true)
         } catch {
             // Keep existing on failure.
         }
         isLoading = false
+    }
+
+    func load(householdID: UUID?) async {
+        await load(householdIDs: householdID.map { [$0] } ?? [])
     }
 }

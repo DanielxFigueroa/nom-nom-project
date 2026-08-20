@@ -4,11 +4,12 @@ private enum FilterSheetType: String, Identifiable {
     case sort
     case tags
     case folder
+    case household
 
     var id: String { rawValue }
 }
 
-/// Horizontal row of pill-shaped dropdown controls for Explore (Sort, Tags, Folder).
+/// Horizontal row of pill-shaped dropdown controls for Explore (Sort, Tags, Folder, Household).
 /// Tapping a pill presents a custom bottom sheet matching the Collectr visual reference.
 struct PillFilterBar: View {
     @Bindable var model: ExploreModel
@@ -17,6 +18,26 @@ struct PillFilterBar: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
+                // 0. Household Pill (shown when user is part of multiple households)
+                if model.joinedHouseholds.count > 1 {
+                    let isHouseholdActive = model.selectedHouseholdID != nil
+                    let householdLabel: String = {
+                        if let selectedID = model.selectedHouseholdID,
+                           let house = model.joinedHouseholds.first(where: { $0.id == selectedID }) {
+                            return house.name ?? "Household"
+                        }
+                        return "All Households"
+                    }()
+
+                    PillDropdown(
+                        icon: isHouseholdActive ? "house.fill" : "house",
+                        label: householdLabel,
+                        isActive: isHouseholdActive
+                    ) {
+                        activeSheet = .household
+                    }
+                }
+
                 // 1. Sort Pill
                 PillDropdown(
                     icon: "arrow.up.arrow.down",
@@ -92,6 +113,8 @@ struct PillFilterBar: View {
                 TagsFilterSheet(model: model)
             case .folder:
                 FolderFilterSheet(model: model)
+            case .household:
+                HouseholdFilterSheet(model: model)
             }
         }
     }
@@ -317,6 +340,41 @@ private struct FolderFilterSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+}
+
+// MARK: - Household Filter Sheet
+
+private struct HouseholdFilterSheet: View {
+    @Bindable var model: ExploreModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        FilterSheetContainer(title: "Select Household") {
+            FilterOptionCard(
+                title: "All Households",
+                subtitle: "Show recipes from all joined households",
+                icon: "house",
+                isSelected: model.selectedHouseholdID == nil
+            ) {
+                model.selectedHouseholdID = nil
+                dismiss()
+            }
+
+            ForEach(model.joinedHouseholds) { household in
+                let isSelected = model.selectedHouseholdID == household.id
+                FilterOptionCard(
+                    title: household.name ?? "Household",
+                    icon: "house.fill",
+                    isSelected: isSelected
+                ) {
+                    model.selectedHouseholdID = household.id
+                    dismiss()
+                }
+            }
+        }
+        .presentationDetents([.height(320), .medium])
         .presentationDragIndicator(.visible)
     }
 }

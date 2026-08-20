@@ -28,10 +28,12 @@ final class ExploreModel {
     var recipes: [Recipe] = []
     var availableTags: [Tag] = []
     var availableFolders: [Folder] = []
+    var joinedHouseholds: [Household] = []
     var searchQuery = ""
     var sort: RecipeSort = .newest
     var selectedTagIDs: Set<UUID> = []
     var selectedFolderID: UUID? = nil
+    var selectedHouseholdID: UUID? = nil
     var isLoading = true
     var errorMessage: String?
 
@@ -108,6 +110,11 @@ final class ExploreModel {
         let folderScopeIDs: Set<UUID>? = selectedFolderID.map { folderAndDescendantIDs(for: $0) }
 
         let filtered = recipes.filter { recipe in
+            // 0. Household filter
+            if let selectedHouseholdID {
+                guard recipe.householdId == selectedHouseholdID else { return false }
+            }
+
             // 1. Text search filter
             if !query.isEmpty {
                 let matchesTitle = recipe.title.lowercased().contains(query)
@@ -153,24 +160,33 @@ final class ExploreModel {
         }
     }
 
-    func load(householdID: UUID?) async {
-        guard let householdID else {
+    func load(householdIDs: [UUID], joinedHouseholds: [Household] = []) async {
+        guard !householdIDs.isEmpty else {
+            recipes = []
+            availableTags = []
+            availableFolders = []
+            self.joinedHouseholds = joinedHouseholds
             isLoading = false
             return
         }
         errorMessage = nil
         do {
-            async let recipesTask = repository.fetchRecipes(householdID: householdID)
-            async let tagsTask = tagsRepository.fetchTags(householdID: householdID)
-            async let foldersTask = foldersRepository.fetchFolders(householdID: householdID)
+            async let recipesTask = repository.fetchRecipes(householdIDs: householdIDs)
+            async let tagsTask = tagsRepository.fetchTags(householdIDs: householdIDs)
+            async let foldersTask = foldersRepository.fetchFolders(householdIDs: householdIDs)
             let (fetchedRecipes, fetchedTags, fetchedFolders) = try await (recipesTask, tagsTask, foldersTask)
             recipes = fetchedRecipes
             availableTags = fetchedTags
             availableFolders = fetchedFolders
+            self.joinedHouseholds = joinedHouseholds
         } catch {
             errorMessage = describeError(error)
         }
         isLoading = false
+    }
+
+    func load(householdID: UUID?) async {
+        await load(householdIDs: householdID.map { [$0] } ?? [])
     }
 
     func toggleTagSelection(_ tagID: UUID) {
@@ -186,9 +202,10 @@ final class ExploreModel {
         sort = .newest
         selectedTagIDs.removeAll()
         selectedFolderID = nil
+        selectedHouseholdID = nil
     }
 
     var hasActiveFilters: Bool {
-        !searchQuery.isEmpty || sort != .newest || !selectedTagIDs.isEmpty || selectedFolderID != nil
+        !searchQuery.isEmpty || sort != .newest || !selectedTagIDs.isEmpty || selectedFolderID != nil || selectedHouseholdID != nil
     }
 }
