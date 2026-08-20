@@ -14,3 +14,7 @@ final class RecipesRefresh {
         token &+= 1
     }
 }
+
+extension Notification.Name {
+    static let recipesRefresh = Notification.Name("recipesRefresh")
+}

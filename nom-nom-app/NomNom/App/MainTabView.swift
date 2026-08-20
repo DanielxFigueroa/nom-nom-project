@@ -12,6 +12,9 @@ struct MainTabView: View {
 
             AddRecipeView()
                 .tabItem { Label("Add", systemImage: "plus.circle") }
+
+            HouseholdsView()
+                .tabItem { Label("Households", systemImage: "house") }
         }
         .tint(.nnTint)
     }
