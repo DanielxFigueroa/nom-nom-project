@@ -6,6 +6,8 @@ struct AccountView: View {
     @Environment(AuthModel.self) private var auth
     @Environment(\.dismiss) private var dismiss
     @State private var showFolders = false
+    @State private var ownedHousehold: Household?
+    @State private var copied = false
 
     var body: some View {
         NavigationStack {
@@ -15,9 +17,52 @@ struct AccountView: View {
                     LabeledContent("User ID", value: auth.user?.id.uuidString ?? "—")
                         .textSelection(.enabled)
                 }
-                Section("Household") {
-                    LabeledContent("Household ID", value: auth.householdId?.uuidString ?? "—")
-                        .textSelection(.enabled)
+                if let householdID = auth.householdId {
+                    Section("My Household") {
+                        if let household = ownedHousehold {
+                            LabeledContent("Name", value: household.name ?? "My Household")
+
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Invite Code")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                    Text(household.inviteCode)
+                                        .font(.title2.weight(.bold).monospaced())
+                                        .foregroundStyle(Color.nnTint)
+                                        .tracking(4)
+                                }
+                                Spacer()
+                                Button {
+                                    UIPasteboard.general.string = household.inviteCode
+                                    copied = true
+                                    Task {
+                                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                                        copied = false
+                                    }
+                                } label: {
+                                    Label(copied ? "Copied!" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
+                                        .font(.subheadline)
+                                        .foregroundStyle(Color.nnTint)
+                                }
+                                .animation(.easeInOut, value: copied)
+                            }
+                            .textSelection(.enabled)
+                        } else {
+                            ProgressView()
+                        }
+
+                        LabeledContent("Household ID", value: householdID.uuidString)
+                            .textSelection(.enabled)
+                            .foregroundStyle(.secondary)
+                            .font(.caption)
+                    }
+                } else {
+                    Section("My Household") {
+                        Text("You haven't created a household. Create one in the Households tab.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 if let householdID = auth.householdId {
                     Section("Folders") {
@@ -46,6 +91,10 @@ struct AccountView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .task {
+                guard let id = auth.householdId else { return }
+                ownedHousehold = try? await HouseholdRepository().fetchHousehold(id: id)
             }
             .sheet(isPresented: $showFolders) {
                 if let householdID = auth.householdId {
