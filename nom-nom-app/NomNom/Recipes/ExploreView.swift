@@ -15,6 +15,9 @@ struct ExploreView: View {
         NavigationStack {
             VStack(spacing: 8) {
                 SearchBar(text: $model.searchQuery)
+                if auth.joinedHouseholds.count > 1 {
+                    householdPillBar
+                }
                 PillFilterBar(model: model)
                 if model.selectedFolderID != nil {
                     folderBreadcrumbBar
@@ -53,6 +56,32 @@ struct ExploreView: View {
         .onAppear { Task { await model.load(householdIDs: auth.joinedHouseholdIds, joinedHouseholds: auth.joinedHouseholds) } }
         .onChange(of: recipesRefresh.token) {
             Task { await model.load(householdIDs: auth.joinedHouseholdIds, joinedHouseholds: auth.joinedHouseholds) }
+        }
+    }
+
+    private var householdPillBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(auth.joinedHouseholds) { household in
+                    let isSelected = model.selectedHouseholdID == household.id
+                    Button {
+                        model.selectedHouseholdID = isSelected ? nil : household.id
+                    } label: {
+                        Label(
+                            household.name ?? "Household",
+                            systemImage: household.id == auth.householdId ? "house.fill" : "house"
+                        )
+                        .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(isSelected ? Color.nnTint : Color(.secondarySystemBackground))
+                        .foregroundStyle(isSelected ? .white : .primary)
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal)
         }
     }
 
@@ -120,12 +149,17 @@ struct ExploreView: View {
             }
         } else if model.recipes.isEmpty {
             ContentUnavailableView(
-                "No recipes found in your joined households.",
+                model.selectedHouseholdID != nil ? "No recipes in this household yet." : "No recipes found in your households.",
                 systemImage: "fork.knife"
             )
         } else if model.filteredRecipes.isEmpty {
             if !model.searchQuery.isEmpty {
                 ContentUnavailableView.search(text: model.searchQuery)
+            } else if model.selectedHouseholdID != nil && model.selectedTagIDs.isEmpty && model.selectedFolderID == nil {
+                ContentUnavailableView(
+                    "No recipes in this household yet.",
+                    systemImage: "fork.knife"
+                )
             } else {
                 ContentUnavailableView(
                     "No Matching Recipes",
