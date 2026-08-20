@@ -19,15 +19,21 @@ struct FoldersRepository {
         let folder_id: UUID?
     }
 
-    /// Fetches all folders for a given household, ordered by creation date.
-    func fetchFolders(householdID: UUID) async throws -> [Folder] {
-        try await client
+    /// Fetches all folders for given households, ordered by creation date.
+    func fetchFolders(householdIDs: [UUID]) async throws -> [Folder] {
+        guard !householdIDs.isEmpty else { return [] }
+        return try await client
             .from("folders")
             .select("*")
-            .eq("household_id", value: householdID)
+            .in("household_id", values: householdIDs)
             .order("created_at", ascending: true)
             .execute()
             .value
+    }
+
+    /// Fetches all folders for a given household, ordered by creation date.
+    func fetchFolders(householdID: UUID) async throws -> [Folder] {
+        try await fetchFolders(householdIDs: [householdID])
     }
 
     /// Creates a new folder (optionally nested under `parentID`).

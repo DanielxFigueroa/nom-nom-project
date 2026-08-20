@@ -50,9 +50,9 @@ struct ExploreView: View {
                 AccountView()
             }
         }
-        .onAppear { Task { await model.load(householdID: auth.householdId) } }
+        .onAppear { Task { await model.load(householdIDs: auth.joinedHouseholdIds, joinedHouseholds: auth.joinedHouseholds) } }
         .onChange(of: recipesRefresh.token) {
-            Task { await model.load(householdID: auth.householdId) }
+            Task { await model.load(householdIDs: auth.joinedHouseholdIds, joinedHouseholds: auth.joinedHouseholds) }
         }
     }
 
@@ -116,11 +116,11 @@ struct ExploreView: View {
             } description: {
                 Text(errorMessage)
             } actions: {
-                Button("Retry") { Task { await model.load(householdID: auth.householdId) } }
+                Button("Retry") { Task { await model.load(householdIDs: auth.joinedHouseholdIds, joinedHouseholds: auth.joinedHouseholds) } }
             }
         } else if model.recipes.isEmpty {
             ContentUnavailableView(
-                "No recipes found in your household.",
+                "No recipes found in your joined households.",
                 systemImage: "fork.knife"
             )
         } else if model.filteredRecipes.isEmpty {
@@ -130,12 +130,12 @@ struct ExploreView: View {
                 ContentUnavailableView(
                     "No Matching Recipes",
                     systemImage: "line.3.horizontal.decrease.circle",
-                    description: Text("Try clearing your folder or tag filters, or changing your search terms.")
+                    description: Text("Try clearing your folder, tag, or household filters, or changing your search terms.")
                 )
             }
         } else {
             RecipeMasonry(recipes: model.filteredRecipes)
-                .refreshable { await model.load(householdID: auth.householdId) }
+                .refreshable { await model.load(householdIDs: auth.joinedHouseholdIds, joinedHouseholds: auth.joinedHouseholds) }
         }
     }
 }

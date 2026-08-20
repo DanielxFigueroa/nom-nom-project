@@ -7,15 +7,21 @@ struct TagsRepository {
 
     // MARK: - Fetch
 
-    /// All tags for the given household.
-    func fetchTags(householdID: UUID) async throws -> [Tag] {
-        try await client
+    /// All tags across given households.
+    func fetchTags(householdIDs: [UUID]) async throws -> [Tag] {
+        guard !householdIDs.isEmpty else { return [] }
+        return try await client
             .from("tags")
             .select("*")
-            .eq("household_id", value: householdID)
+            .in("household_id", values: householdIDs)
             .order("name")
             .execute()
             .value
+    }
+
+    /// All tags for the given household.
+    func fetchTags(householdID: UUID) async throws -> [Tag] {
+        try await fetchTags(householdIDs: [householdID])
     }
 
     /// Tags associated with a specific recipe (via the recipe_tags junction).

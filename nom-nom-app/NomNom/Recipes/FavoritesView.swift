@@ -12,9 +12,9 @@ struct FavoritesView: View {
             content
                 .navigationTitle("Favorites")
         }
-        .onAppear { Task { await model.load(householdID: auth.householdId) } }
+        .onAppear { Task { await model.load(householdIDs: auth.joinedHouseholdIds) } }
         .onChange(of: recipesRefresh.token) {
-            Task { await model.load(householdID: auth.householdId) }
+            Task { await model.load(householdIDs: auth.joinedHouseholdIds) }
         }
     }
 
@@ -30,7 +30,7 @@ struct FavoritesView: View {
             )
         } else {
             RecipeMasonry(recipes: model.recipes)
-                .refreshable { await model.load(householdID: auth.householdId) }
+                .refreshable { await model.load(householdIDs: auth.joinedHouseholdIds) }
         }
     }
 }
