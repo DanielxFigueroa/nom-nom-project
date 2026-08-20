@@ -33,7 +33,17 @@ final class ExploreModel {
     var sort: RecipeSort = .newest
     var selectedTagIDs: Set<UUID> = []
     var selectedFolderID: UUID? = nil
-    var selectedHouseholdID: UUID? = nil
+    var selectedHouseholdID: UUID? = nil {
+        didSet {
+            if let selectedFolderID, let folder = availableFolders.first(where: { $0.id == selectedFolderID }) {
+                if let oldValue, folder.householdId == oldValue {
+                    self.selectedFolderID = nil
+                } else if let selectedHouseholdID, folder.householdId != selectedHouseholdID {
+                    self.selectedFolderID = nil
+                }
+            }
+        }
+    }
     var isLoading = true
     var errorMessage: String?
 
@@ -80,10 +90,14 @@ final class ExploreModel {
 
     /// Generates a depth-first list of folders with depth levels for indented display.
     func hierarchicalFolders() -> [FolderNode] {
+        let foldersToUse = selectedHouseholdID.map { householdID in
+            availableFolders.filter { $0.householdId == householdID }
+        } ?? availableFolders
+
         var nodes: [FolderNode] = []
 
         func appendChildren(of parentID: UUID?, depth: Int) {
-            let children = availableFolders
+            let children = foldersToUse
                 .filter { $0.parentId == parentID }
                 .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
             for child in children {
@@ -95,7 +109,7 @@ final class ExploreModel {
         appendChildren(of: nil, depth: 0)
 
         let addedIDs = Set(nodes.map { $0.id })
-        let remaining = availableFolders
+        let remaining = foldersToUse
             .filter { !addedIDs.contains($0.id) }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         for folder in remaining {
