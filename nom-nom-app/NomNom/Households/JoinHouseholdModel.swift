@@ -35,6 +35,11 @@ final class JoinHouseholdModel {
             successMessage = "Successfully joined household!"
             recipesRefresh?.trigger()
             NotificationCenter.default.post(name: .recipesRefresh, object: nil)
+
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 3_500_000_000)
+                self?.successMessage = nil
+            }
         } catch {
             errorMessage = "Could not join household. Please try again."
         }

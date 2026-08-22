@@ -24,6 +24,8 @@ struct HouseholdsView: View {
                                 .disableAutocorrection(true)
                                 .onChange(of: model.inviteCode) { _, newValue in
                                     model.inviteCode = String(newValue.prefix(6)).uppercased()
+                                    if model.errorMessage != nil { model.errorMessage = nil }
+                                    if model.successMessage != nil { model.successMessage = nil }
                                 }
 
                             Button {
@@ -49,15 +51,19 @@ struct HouseholdsView: View {
                             Text(errorMessage)
                                 .font(.footnote)
                                 .foregroundColor(.red)
+                                .transition(.opacity)
                         }
 
                         if let successMessage = model.successMessage {
                             Text(successMessage)
                                 .font(.footnote)
                                 .foregroundColor(.green)
+                                .transition(.opacity)
                         }
                     }
                     .padding(.vertical, 4)
+                    .animation(.easeInOut, value: model.successMessage)
+                    .animation(.easeInOut, value: model.errorMessage)
                 }
 
                 Section("My Households") {
