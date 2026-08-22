@@ -15,6 +15,7 @@ struct HouseholdRepository {
     private struct HouseholdMemberInsert: Encodable {
         let user_id: UUID
         let household_id: UUID
+        let status: String
     }
 
     // MARK: - Multi-Household Methods
@@ -25,14 +26,15 @@ struct HouseholdRepository {
             .from("household_members")
             .select("household_id, households(*)")
             .eq("user_id", value: userID)
+            .eq("status", value: "active")
             .execute()
             .value
         return rows.compactMap { $0.households }
     }
 
     /// INSERT INTO `household_members(user_id, household_id)` ON CONFLICT DO NOTHING.
-    func joinHousehold(userID: UUID, householdID: UUID) async throws {
-        let member = HouseholdMemberInsert(user_id: userID, household_id: householdID)
+    func joinHousehold(userID: UUID, householdID: UUID, status: String = "pending") async throws {
+        let member = HouseholdMemberInsert(user_id: userID, household_id: householdID, status: status)
         try await client
             .from("household_members")
             .upsert(member, ignoreDuplicates: true)
