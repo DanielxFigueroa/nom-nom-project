@@ -12,6 +12,8 @@ final class AuthModel {
     var session: Session?
     var householdId: UUID?
     var joinedHouseholds: [Household] = []
+    var userMemberships: [HouseholdMember] = []
+    var pendingRequestCounts: [UUID: Int] = [:]
     var isLoading = true
 
     var user: User? { session?.user }
@@ -21,6 +23,10 @@ final class AuthModel {
 
     private let client = SupabaseManager.shared
     private let householdRepository = HouseholdRepository()
+
+    func isOwner(of householdID: UUID) -> Bool {
+        userMemberships.first(where: { $0.householdId == householdID })?.role == .owner
+    }
 
     /// Call once at app launch. Restores any persisted session, resolves the
     /// household, then keeps observing auth-state changes.
@@ -37,6 +43,8 @@ final class AuthModel {
             case .signedOut:
                 householdId = nil
                 joinedHouseholds = []
+                userMemberships = []
+                pendingRequestCounts = [:]
             default:
                 break
             }
@@ -49,6 +57,8 @@ final class AuthModel {
         guard let userID = user?.id else {
             householdId = nil
             joinedHouseholds = []
+            userMemberships = []
+            pendingRequestCounts = [:]
             return
         }
         do {
@@ -69,12 +79,27 @@ final class AuthModel {
     func refreshJoinedHouseholds() async {
         guard let userID = user?.id else {
             joinedHouseholds = []
+            userMemberships = []
+            pendingRequestCounts = [:]
             return
         }
         do {
             joinedHouseholds = try await householdRepository.fetchJoinedHouseholds(userID: userID)
+            userMemberships = (try? await householdRepository.fetchUserMemberships(userID: userID)) ?? []
+
+            var counts: [UUID: Int] = [:]
+            for household in joinedHouseholds {
+                if isOwner(of: household.id) {
+                    if let pending = try? await householdRepository.fetchPendingRequests(householdID: household.id) {
+                        counts[household.id] = pending.count
+                    }
+                }
+            }
+            pendingRequestCounts = counts
         } catch {
             joinedHouseholds = []
+            userMemberships = []
+            pendingRequestCounts = [:]
         }
     }
 
@@ -96,5 +121,7 @@ final class AuthModel {
         session = nil
         householdId = nil
         joinedHouseholds = []
+        userMemberships = []
+        pendingRequestCounts = [:]
     }
 }
