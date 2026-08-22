@@ -38,13 +38,13 @@ final class HouseholdDetailModel {
                 requireApproval = updated.requireApproval
             }
 
-            activeMembers = try await repository.fetchActiveMembers(householdID: household.id)
-
             if isOwner(auth: auth) {
+                activeMembers = try await repository.fetchActiveMembers(householdID: household.id)
                 pendingRequests = try await repository.fetchPendingRequests(householdID: household.id)
                 let validIDs = Set(pendingRequests.map(\.userId))
                 selectedPendingIDs = selectedPendingIDs.intersection(validIDs)
             } else {
+                activeMembers = []
                 pendingRequests = []
                 selectedPendingIDs = []
             }

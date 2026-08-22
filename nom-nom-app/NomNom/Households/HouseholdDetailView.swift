@@ -39,6 +39,41 @@ struct HouseholdDetailView: View {
                 }
             }
 
+            // Household Info Section (Basic Info for all members)
+            Section("Household Info") {
+                if let name = model.household.name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+                    LabeledContent("Name", value: name)
+                }
+
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Invite Code")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Text(model.household.inviteCode)
+                            .font(.title3.weight(.bold).monospaced())
+                            .foregroundStyle(Color.nnTint)
+                            .tracking(2)
+                    }
+                    Spacer()
+                    Button {
+                        UIPasteboard.general.string = model.household.inviteCode
+                        copied = true
+                        Task {
+                            try? await Task.sleep(nanoseconds: 2_000_000_000)
+                            copied = false
+                        }
+                    } label: {
+                        Label(copied ? "Copied!" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.nnTint)
+                    }
+                    .animation(.easeInOut, value: copied)
+                }
+
+                LabeledContent("Your Role", value: isOwner ? "Owner" : "Member")
+            }
+
             // Pending Requests Section (Owner only, only when pending requests exist)
             if isOwner && !model.pendingRequests.isEmpty {
                 Section {
@@ -95,54 +130,27 @@ struct HouseholdDetailView: View {
                 }
             }
 
-            // Active Members Section
-            Section("Active Members (\(model.activeMembers.count))") {
-                if model.activeMembers.isEmpty && !model.isLoading {
-                    Text("No members found.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                } else {
-                    ForEach(model.activeMembers) { member in
-                        MemberRow(
-                            member: member,
-                            isCurrentHouseholdOwner: isOwner,
-                            currentUserID: auth.user?.id,
-                            currentUserEmail: auth.user?.email,
-                            onRemove: {
-                                model.memberToRemove = member
-                                model.showRemoveAlert = true
-                            }
-                        )
-                    }
-                }
-            }
-
-            // Household Info Section
-            Section("Household Info") {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Invite Code")
+            // Active Members Section (Owner only)
+            if isOwner {
+                Section("Active Members (\(model.activeMembers.count))") {
+                    if model.activeMembers.isEmpty && !model.isLoading {
+                        Text("No members found.")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text(model.household.inviteCode)
-                            .font(.title3.weight(.bold).monospaced())
-                            .foregroundStyle(Color.nnTint)
-                            .tracking(2)
-                    }
-                    Spacer()
-                    Button {
-                        UIPasteboard.general.string = model.household.inviteCode
-                        copied = true
-                        Task {
-                            try? await Task.sleep(nanoseconds: 2_000_000_000)
-                            copied = false
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(model.activeMembers) { member in
+                            MemberRow(
+                                member: member,
+                                isCurrentHouseholdOwner: isOwner,
+                                currentUserID: auth.user?.id,
+                                currentUserEmail: auth.user?.email,
+                                onRemove: {
+                                    model.memberToRemove = member
+                                    model.showRemoveAlert = true
+                                }
+                            )
                         }
-                    } label: {
-                        Label(copied ? "Copied!" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
-                            .font(.subheadline)
-                            .foregroundStyle(Color.nnTint)
                     }
-                    .animation(.easeInOut, value: copied)
                 }
             }
 
