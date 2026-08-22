@@ -25,7 +25,10 @@ final class AuthModel {
     private let householdRepository = HouseholdRepository()
 
     func isOwner(of householdID: UUID) -> Bool {
-        userMemberships.first(where: { $0.householdId == householdID })?.role == .owner
+        if let membership = userMemberships.first(where: { $0.householdId == householdID }) {
+            return membership.role == .owner
+        }
+        return householdId == householdID
     }
 
     /// Call once at app launch. Restores any persisted session, resolves the
@@ -84,8 +87,25 @@ final class AuthModel {
             return
         }
         do {
-            joinedHouseholds = try await householdRepository.fetchJoinedHouseholds(userID: userID)
-            userMemberships = (try? await householdRepository.fetchUserMemberships(userID: userID)) ?? []
+            var fetchedHouseholds = try await householdRepository.fetchJoinedHouseholds(userID: userID)
+            var memberships = (try? await householdRepository.fetchUserMemberships(userID: userID)) ?? []
+
+            // Auto-heal: If profile household is set but not present in joinedHouseholds, add it & ensure membership
+            if let primaryID = householdId, !fetchedHouseholds.contains(where: { $0.id == primaryID }) {
+                if let primaryHousehold = try? await householdRepository.fetchHousehold(id: primaryID) {
+                    fetchedHouseholds.insert(primaryHousehold, at: 0)
+                    try? await householdRepository.joinHousehold(
+                        userID: userID,
+                        householdID: primaryID,
+                        status: HouseholdMember.MemberStatus.active.rawValue,
+                        role: HouseholdMember.MemberRole.owner.rawValue
+                    )
+                    memberships = (try? await householdRepository.fetchUserMemberships(userID: userID)) ?? memberships
+                }
+            }
+
+            joinedHouseholds = fetchedHouseholds
+            userMemberships = memberships
 
             var counts: [UUID: Int] = [:]
             for household in joinedHouseholds {
@@ -97,8 +117,21 @@ final class AuthModel {
             }
             pendingRequestCounts = counts
         } catch {
-            joinedHouseholds = []
-            userMemberships = []
+            // Resilient fallback: at least load primary household if available
+            if let primaryID = householdId, let primaryHousehold = try? await householdRepository.fetchHousehold(id: primaryID) {
+                joinedHouseholds = [primaryHousehold]
+                userMemberships = [
+                    HouseholdMember(
+                        userId: userID,
+                        householdId: primaryID,
+                        status: .active,
+                        role: .owner
+                    )
+                ]
+            } else {
+                joinedHouseholds = []
+                userMemberships = []
+            }
             pendingRequestCounts = [:]
         }
     }

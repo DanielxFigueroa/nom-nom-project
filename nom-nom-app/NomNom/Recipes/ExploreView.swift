@@ -53,7 +53,12 @@ struct ExploreView: View {
                 AccountView()
             }
         }
-        .onAppear { Task { await model.load(householdIDs: auth.joinedHouseholdIds, joinedHouseholds: auth.joinedHouseholds) } }
+        .task {
+            await model.load(householdIDs: auth.joinedHouseholdIds, joinedHouseholds: auth.joinedHouseholds)
+        }
+        .onChange(of: auth.joinedHouseholdIds) {
+            Task { await model.load(householdIDs: auth.joinedHouseholdIds, joinedHouseholds: auth.joinedHouseholds) }
+        }
         .onChange(of: recipesRefresh.token) {
             Task { await model.load(householdIDs: auth.joinedHouseholdIds, joinedHouseholds: auth.joinedHouseholds) }
         }
