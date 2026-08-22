@@ -22,10 +22,15 @@ struct HouseholdsView: View {
                                 .textFieldStyle(.roundedBorder)
                                 .autocapitalization(.allCharacters)
                                 .disableAutocorrection(true)
-                                .onChange(of: model.inviteCode) { _, newValue in
-                                    model.inviteCode = String(newValue.prefix(6)).uppercased()
-                                    if model.errorMessage != nil { model.errorMessage = nil }
-                                    if model.successMessage != nil { model.successMessage = nil }
+                                .onChange(of: model.inviteCode) { oldValue, newValue in
+                                    let formatted = String(newValue.prefix(6)).uppercased()
+                                    if formatted != model.inviteCode {
+                                        model.inviteCode = formatted
+                                    }
+                                    if !newValue.isEmpty && oldValue != newValue {
+                                        if model.errorMessage != nil { model.errorMessage = nil }
+                                        if model.successMessage != nil { model.successMessage = nil }
+                                    }
                                 }
 
                             Button {
