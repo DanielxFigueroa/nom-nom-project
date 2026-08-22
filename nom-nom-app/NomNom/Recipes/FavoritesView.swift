@@ -12,7 +12,12 @@ struct FavoritesView: View {
             content
                 .navigationTitle("Favorites")
         }
-        .onAppear { Task { await model.load(householdIDs: auth.joinedHouseholdIds) } }
+        .task {
+            await model.load(householdIDs: auth.joinedHouseholdIds)
+        }
+        .onChange(of: auth.joinedHouseholdIds) {
+            Task { await model.load(householdIDs: auth.joinedHouseholdIds) }
+        }
         .onChange(of: recipesRefresh.token) {
             Task { await model.load(householdIDs: auth.joinedHouseholdIds) }
         }

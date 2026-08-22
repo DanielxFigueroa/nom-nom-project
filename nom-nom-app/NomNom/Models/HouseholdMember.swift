@@ -8,7 +8,17 @@ struct HouseholdMember: Identifiable, Codable, Hashable {
     let status: MemberStatus
     let role: MemberRole
 
-    var id: UUID { householdId }
+    var id: UUID { userId }
+
+    func displayName(currentUserID: UUID? = nil, currentUserEmail: String? = nil) -> String {
+        if let currentUserID, userId == currentUserID {
+            if let currentUserEmail, !currentUserEmail.isEmpty {
+                return "\(currentUserEmail) (You)"
+            }
+            return "You"
+        }
+        return "User (\(userId.uuidString.prefix(8)))"
+    }
 
     enum MemberStatus: String, Codable, Hashable {
         case pending, active, declined
