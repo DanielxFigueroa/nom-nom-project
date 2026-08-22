@@ -107,12 +107,14 @@ final class HouseholdDetailModel {
         }
     }
 
-    func updateApprovalSetting(_ newValue: Bool) async {
+    func updateApprovalSetting(_ newValue: Bool, auth: AuthModel? = nil) async {
         let oldValue = requireApproval
         requireApproval = newValue
 
         do {
             try await repository.updateApprovalSetting(householdID: household.id, requireApproval: newValue)
+            household.requireApproval = newValue
+            await auth?.refreshJoinedHouseholds()
         } catch {
             requireApproval = oldValue
             errorMessage = error.localizedDescription

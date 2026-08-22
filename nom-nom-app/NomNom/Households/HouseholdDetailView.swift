@@ -161,7 +161,7 @@ struct HouseholdDetailView: View {
                         get: { model.requireApproval },
                         set: { newValue in
                             Task {
-                                await model.updateApprovalSetting(newValue)
+                                await model.updateApprovalSetting(newValue, auth: auth)
                             }
                         }
                     ))

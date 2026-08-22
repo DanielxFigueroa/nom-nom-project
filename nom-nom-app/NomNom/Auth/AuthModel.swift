@@ -12,6 +12,7 @@ final class AuthModel {
     var session: Session?
     var householdId: UUID?
     var joinedHouseholds: [Household] = []
+    var pendingHouseholds: [Household] = []
     var userMemberships: [HouseholdMember] = []
     var pendingRequestCounts: [UUID: Int] = [:]
     var isLoading = true
@@ -46,6 +47,7 @@ final class AuthModel {
             case .signedOut:
                 householdId = nil
                 joinedHouseholds = []
+                pendingHouseholds = []
                 userMemberships = []
                 pendingRequestCounts = [:]
             default:
@@ -60,6 +62,7 @@ final class AuthModel {
         guard let userID = user?.id else {
             householdId = nil
             joinedHouseholds = []
+            pendingHouseholds = []
             userMemberships = []
             pendingRequestCounts = [:]
             return
@@ -82,12 +85,14 @@ final class AuthModel {
     func refreshJoinedHouseholds() async {
         guard let userID = user?.id else {
             joinedHouseholds = []
+            pendingHouseholds = []
             userMemberships = []
             pendingRequestCounts = [:]
             return
         }
         do {
             var fetchedHouseholds = try await householdRepository.fetchJoinedHouseholds(userID: userID)
+            let fetchedPendingHouseholds = (try? await householdRepository.fetchPendingHouseholds(userID: userID)) ?? []
             var memberships = (try? await householdRepository.fetchUserMemberships(userID: userID)) ?? []
 
             // Auto-heal: If profile household is set but not present in joinedHouseholds, add it & ensure membership
@@ -105,6 +110,7 @@ final class AuthModel {
             }
 
             joinedHouseholds = fetchedHouseholds
+            pendingHouseholds = fetchedPendingHouseholds
             userMemberships = memberships
 
             var counts: [UUID: Int] = [:]
@@ -132,6 +138,7 @@ final class AuthModel {
                 joinedHouseholds = []
                 userMemberships = []
             }
+            pendingHouseholds = []
             pendingRequestCounts = [:]
         }
     }
@@ -154,6 +161,7 @@ final class AuthModel {
         session = nil
         householdId = nil
         joinedHouseholds = []
+        pendingHouseholds = []
         userMemberships = []
         pendingRequestCounts = [:]
     }
