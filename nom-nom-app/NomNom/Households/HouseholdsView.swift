@@ -67,7 +67,9 @@ struct HouseholdsView: View {
                             .font(.subheadline)
                     } else {
                         ForEach(auth.joinedHouseholds) { household in
-                            householdRow(household)
+                            NavigationLink(destination: HouseholdDetailView(household: household)) {
+                                householdRow(household)
+                            }
                         }
                     }
                 }
@@ -89,10 +91,11 @@ struct HouseholdsView: View {
     }
 
     private func householdRow(_ household: Household) -> some View {
-        let isOwner = household.id == auth.householdId
+        let isOwner = auth.isOwner(of: household.id) || household.id == auth.householdId
         let name = household.name?.trimmingCharacters(in: .whitespacesAndNewlines)
         let displayName = (name != nil && !name!.isEmpty) ? name! : "Household (\(household.id.uuidString.suffix(4)))"
         let count = recipeCounts[household.id, default: 0]
+        let pendingCount = auth.pendingRequestCounts[household.id, default: 0]
 
         return HStack(spacing: 12) {
             Image(systemName: isOwner ? "star.fill" : "house.fill")
@@ -114,6 +117,17 @@ struct HouseholdsView: View {
                             .background(Color.orange.opacity(0.15))
                             .foregroundColor(.orange)
                             .clipShape(Capsule())
+
+                        if pendingCount > 0 {
+                            Text("\(pendingCount) pending")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.orange.opacity(0.15))
+                                .foregroundColor(.orange)
+                                .clipShape(Capsule())
+                        }
                     }
                 }
 
