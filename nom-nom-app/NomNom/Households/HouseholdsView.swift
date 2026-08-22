@@ -67,7 +67,7 @@ struct HouseholdsView: View {
                 }
 
                 Section("My Households") {
-                    if auth.joinedHouseholds.isEmpty {
+                    if auth.joinedHouseholds.isEmpty && auth.pendingHouseholds.isEmpty {
                         Text("No households joined yet.")
                             .foregroundColor(.secondary)
                             .font(.subheadline)
@@ -76,6 +76,9 @@ struct HouseholdsView: View {
                             NavigationLink(destination: HouseholdDetailView(household: household)) {
                                 householdRow(household)
                             }
+                        }
+                        ForEach(auth.pendingHouseholds) { household in
+                            pendingHouseholdRow(household)
                         }
                     }
                 }
@@ -152,6 +155,49 @@ struct HouseholdsView: View {
             Spacer()
         }
         .padding(.vertical, 4)
+    }
+
+    private func pendingHouseholdRow(_ household: Household) -> some View {
+        let name = household.name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let displayName = (name != nil && !name!.isEmpty) ? name! : "Household (\(household.id.uuidString.suffix(4)))"
+
+        return HStack(spacing: 12) {
+            Image(systemName: "clock.badge.questionmark")
+                .foregroundColor(.orange)
+                .font(.title3)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(displayName)
+                        .font(.body)
+                        .fontWeight(.semibold)
+
+                    Text("Pending")
+                        .font(.caption2)
+                        .fontWeight(.bold)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange.opacity(0.15))
+                        .foregroundColor(.orange)
+                        .clipShape(Capsule())
+                }
+
+                HStack(spacing: 12) {
+                    Text("Waiting for owner approval")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Text("Code: \(household.inviteCode)")
+                        .font(.caption)
+                        .fontDesign(.monospaced)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 4)
+        .opacity(0.6)
     }
 
     private func loadRecipeCounts() async {

@@ -21,7 +21,7 @@ struct HouseholdRepository {
 
     // MARK: - Multi-Household Methods
 
-    /// Query `household_members` joined to `households` to get all households for the user.
+    /// Query `household_members` joined to `households` to get all households for the user where status is active.
     func fetchJoinedHouseholds(userID: UUID) async throws -> [Household] {
         let rows: [HouseholdMemberJoin] = try await client
             .from("household_members")
@@ -33,7 +33,31 @@ struct HouseholdRepository {
         return rows.compactMap { $0.households }
     }
 
-    /// INSERT INTO `household_members(user_id, household_id)` ON CONFLICT DO NOTHING.
+    /// Query `household_members` joined to `households` to get pending households for the user.
+    func fetchPendingHouseholds(userID: UUID) async throws -> [Household] {
+        let rows: [HouseholdMemberJoin] = try await client
+            .from("household_members")
+            .select("household_id, households(*)")
+            .eq("user_id", value: userID)
+            .eq("status", value: HouseholdMember.MemberStatus.pending.rawValue)
+            .execute()
+            .value
+        return rows.compactMap { $0.households }
+    }
+
+    /// Fetch a user's membership row for a specific household.
+    func fetchMembership(userID: UUID, householdID: UUID) async throws -> HouseholdMember? {
+        try await client
+            .from("household_members")
+            .select("*")
+            .eq("user_id", value: userID)
+            .eq("household_id", value: householdID)
+            .maybeSingle()
+            .execute()
+            .value
+    }
+
+    /// INSERT/UPSERT INTO `household_members(user_id, household_id)`.
     /// Approval-aware: checks `require_approval` on the target household if `status` is nil.
     func joinHousehold(userID: UUID, householdID: UUID, status: String? = nil, role: String? = nil) async throws {
         let targetStatus: String
@@ -49,7 +73,7 @@ struct HouseholdRepository {
         let member = HouseholdMemberInsert(user_id: userID, household_id: householdID, status: targetStatus, role: targetRole)
         try await client
             .from("household_members")
-            .upsert(member, ignoreDuplicates: true)
+            .upsert(member)
             .execute()
     }
 
@@ -59,6 +83,17 @@ struct HouseholdRepository {
             .from("households")
             .select("*")
             .eq("id", value: id)
+            .maybeSingle()
+            .execute()
+            .value
+    }
+
+    /// Fetch a single household by invite code (case-insensitive).
+    func fetchHousehold(inviteCode: String) async throws -> Household? {
+        try await client
+            .from("households")
+            .select("*")
+            .eq("invite_code", value: inviteCode.uppercased())
             .maybeSingle()
             .execute()
             .value
