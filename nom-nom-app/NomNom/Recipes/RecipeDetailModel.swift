@@ -25,6 +25,29 @@ final class RecipeDetailModel {
         self.desiredServings = max(recipe.servings, 1)
     }
 
+    var minServings: Int { 1 }
+
+    var maxServings: Int {
+        max(24, recipe.servings)
+    }
+
+    var desiredServingsDouble: Double {
+        get { Double(desiredServings) }
+        set { desiredServings = max(minServings, min(maxServings, Int(newValue.rounded()))) }
+    }
+
+    func incrementServings() {
+        if desiredServings < maxServings {
+            desiredServings += 1
+        }
+    }
+
+    func decrementServings() {
+        if desiredServings > minServings {
+            desiredServings -= 1
+        }
+    }
+
     var scaleFactor: Double {
         Double(desiredServings) / Double(max(recipe.servings, 1))
     }

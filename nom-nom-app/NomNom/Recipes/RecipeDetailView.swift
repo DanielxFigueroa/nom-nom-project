@@ -178,7 +178,7 @@ struct RecipeDetailView: View {
     private var ingredientsSection: some View {
         section("Ingredients") {
             VStack(alignment: .leading, spacing: 12) {
-                servingsStepperHeader
+                servingsSliderHeader
 
                 if model.hasLegacyUnscalableIngredients && model.isServingScaled {
                     HStack(spacing: 6) {
@@ -204,33 +204,78 @@ struct RecipeDetailView: View {
         }
     }
 
-    private var servingsStepperHeader: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Servings")
-                    .font(.subheadline.weight(.semibold))
-                Text("Serves \(model.desiredServings) · base \(model.recipe.servings)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            if model.isServingScaled {
-                Button("Reset") {
-                    model.resetServings()
+    private var servingsSliderHeader: some View {
+        VStack(spacing: 12) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Servings")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Serves \(model.desiredServings) · base \(model.recipe.servings)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .contentTransition(.numericText())
                 }
-                .font(.caption.weight(.semibold))
-                .buttonStyle(.bordered)
-                .tint(.nnTint)
-                .controlSize(.small)
+
+                Spacer()
+
+                if model.isServingScaled {
+                    Button("Reset") {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            model.resetServings()
+                        }
+                    }
+                    .font(.caption.weight(.semibold))
+                    .buttonStyle(.bordered)
+                    .tint(.nnTint)
+                    .controlSize(.small)
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                }
             }
 
-            Stepper("", value: $model.desiredServings, in: 1...100)
-                .labelsHidden()
+            HStack(spacing: 10) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        model.decrementServings()
+                    }
+                } label: {
+                    Image(systemName: "minus.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(model.desiredServings > model.minServings ? Color.nnTint : Color(.tertiaryLabel))
+                }
+                .disabled(model.desiredServings <= model.minServings)
+                .accessibilityLabel("Decrease servings")
+
+                Slider(
+                    value: Binding(
+                        get: { model.desiredServingsDouble },
+                        set: { newValue in
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                model.desiredServingsDouble = newValue
+                            }
+                        }
+                    ),
+                    in: Double(model.minServings)...Double(model.maxServings),
+                    step: 1
+                )
+                .tint(.nnTint)
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        model.incrementServings()
+                    }
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(model.desiredServings < model.maxServings ? Color.nnTint : Color(.tertiaryLabel))
+                }
+                .disabled(model.desiredServings >= model.maxServings)
+                .accessibilityLabel("Increase servings")
+            }
         }
         .padding(12)
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+        .sensoryFeedback(.selection, trigger: model.desiredServings)
+        .animation(.easeInOut(duration: 0.2), value: model.isServingScaled)
     }
 
     private func ingredientRow(_ ingredient: Ingredient) -> some View {
@@ -245,6 +290,7 @@ struct RecipeDetailView: View {
                 Text(label)
                     .strikethrough(checked)
                     .foregroundStyle(checked ? Color.secondary : Color.primary)
+                    .animation(.easeInOut(duration: 0.15), value: label)
                 Spacer(minLength: 0)
             }
             .contentShape(Rectangle())
