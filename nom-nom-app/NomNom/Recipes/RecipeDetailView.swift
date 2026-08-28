@@ -264,29 +264,49 @@ struct RecipeDetailView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(Color(.secondarySystemBackground), in: Capsule())
-        } else if model.hasCheckedIngredients {
+        } else {
             Menu {
-                Button {
-                    Task {
-                        await model.exportToReminders(onlyUnchecked: true)
+                Section("Export") {
+                    if model.hasCheckedIngredients {
+                        Button {
+                            Task {
+                                await model.exportToReminders(onlyUnchecked: true)
+                            }
+                        } label: {
+                            Label("Export Unchecked (\(model.uncheckedIngredients.count))", systemImage: "checklist.unchecked")
+                        }
                     }
-                } label: {
-                    Label("Export Unchecked (\(model.uncheckedIngredients.count))", systemImage: "checklist.unchecked")
+
+                    Button {
+                        Task {
+                            await model.exportToReminders(onlyUnchecked: false)
+                        }
+                    } label: {
+                        Label(model.hasCheckedIngredients ? "Export All (\(model.ingredients.count))" : "Export Ingredients", systemImage: "checklist")
+                    }
                 }
 
-                Button {
-                    Task {
-                        await model.exportToReminders(onlyUnchecked: false)
+                if !model.availableReminderLists.isEmpty {
+                    Section("Destination List") {
+                        ForEach(model.availableReminderLists) { list in
+                            Button {
+                                model.selectPreferredList(list.id)
+                            } label: {
+                                if model.selectedListID == list.id {
+                                    Label(list.title, systemImage: "checkmark")
+                                } else {
+                                    Text(list.title)
+                                }
+                            }
+                        }
                     }
-                } label: {
-                    Label("Export All (\(model.ingredients.count))", systemImage: "checklist")
                 }
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "list.bullet.clipboard")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(Color.nnTint)
-                    Text("Add to Reminders")
+                    Text(remindersButtonTitle)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Color.nnTint)
                     Image(systemName: "chevron.down")
@@ -297,26 +317,15 @@ struct RecipeDetailView: View {
                 .padding(.vertical, 6)
                 .background(Color(.secondarySystemBackground), in: Capsule())
             }
-        } else {
-            Button {
-                Task {
-                    await model.exportToReminders(onlyUnchecked: false)
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "list.bullet.clipboard")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(Color.nnTint)
-                    Text("Add to Reminders")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.nnTint)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color(.secondarySystemBackground), in: Capsule())
-            }
-            .buttonStyle(.plain)
         }
+    }
+
+    private var remindersButtonTitle: String {
+        if let name = model.selectedListName, !name.isEmpty, name != "Reminders" {
+            let truncated = name.count > 16 ? String(name.prefix(13)) + "…" : name
+            return "Add to \(truncated)"
+        }
+        return "Add to Reminders"
     }
 
     private var servingsSliderHeader: some View {

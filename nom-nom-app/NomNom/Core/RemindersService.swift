@@ -28,7 +28,14 @@ enum RemindersError: LocalizedError {
     }
 }
 
-/// Service handling Apple Reminders authorization and item creation.
+/// Represents an available list in Apple Reminders.
+struct RemindersListInfo: Identifiable, Hashable, Sendable {
+    let id: String
+    let title: String
+    let isDefault: Bool
+}
+
+/// Service handling Apple Reminders authorization, list discovery, and item creation.
 final class RemindersService {
     static let shared = RemindersService()
     private let eventStore = EKEventStore()
@@ -59,9 +66,40 @@ final class RemindersService {
         }
     }
 
-    /// Exports an array of formatted ingredient strings to the user's Reminders list.
-    func exportIngredients(_ items: [String], listTitle: String? = nil) async throws -> Int {
-        guard !items.isEmpty else { return 0 }
+    /// Fetches all accessible reminder lists for the user.
+    func fetchReminderLists() async throws -> [RemindersListInfo] {
+        let status = checkAuthorizationStatus()
+        switch status {
+        case .notDetermined:
+            let granted = try await requestAuthorization()
+            guard granted else { return [] }
+        case .authorized:
+            break
+        case .denied, .restricted:
+            return []
+        }
+
+        let calendars = eventStore.calendars(for: .reminder)
+        let defaultCalendar = eventStore.defaultCalendarForNewReminders()
+
+        return calendars.map { calendar in
+            RemindersListInfo(
+                id: calendar.calendarIdentifier,
+                title: calendar.title,
+                isDefault: calendar.calendarIdentifier == defaultCalendar?.calendarIdentifier
+            )
+        }.sorted { (a, b) -> Bool in
+            if a.isDefault != b.isDefault {
+                return a.isDefault && !b.isDefault
+            }
+            return a.title.localizedCaseInsensitiveCompare(b.title) == .orderedAscending
+        }
+    }
+
+    /// Exports an array of formatted ingredient strings to the specified or default Reminders list.
+    /// Returns the number of items created and the destination list title.
+    func exportIngredients(_ items: [String], toCalendarIdentifier calendarID: String? = nil) async throws -> (count: Int, listTitle: String) {
+        guard !items.isEmpty else { return (0, "") }
 
         let status = checkAuthorizationStatus()
         switch status {
@@ -78,9 +116,17 @@ final class RemindersService {
             break
         }
 
-        let targetCalendar = eventStore.defaultCalendarForNewReminders()
-            ?? eventStore.calendars(for: .reminder).first(where: { $0.title == "Reminders" })
-            ?? eventStore.calendars(for: .reminder).first
+        let allCalendars = eventStore.calendars(for: .reminder)
+        let targetCalendar: EKCalendar?
+        if let calendarID = calendarID {
+            targetCalendar = allCalendars.first { $0.calendarIdentifier == calendarID }
+                ?? eventStore.defaultCalendarForNewReminders()
+                ?? allCalendars.first
+        } else {
+            targetCalendar = eventStore.defaultCalendarForNewReminders()
+                ?? allCalendars.first(where: { $0.title == "Reminders" })
+                ?? allCalendars.first
+        }
 
         guard let calendar = targetCalendar else {
             throw RemindersError.noCalendarAvailable
@@ -94,6 +140,6 @@ final class RemindersService {
         }
 
         try eventStore.commit()
-        return items.count
+        return (items.count, calendar.title)
     }
 }
