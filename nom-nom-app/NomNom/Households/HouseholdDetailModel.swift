@@ -14,7 +14,9 @@ final class HouseholdDetailModel {
     var isLoading = false
     var errorMessage: String?
     var memberToRemove: HouseholdMember?
+    var memberToTransfer: HouseholdMember?
     var showRemoveAlert = false
+    var showTransferAlert = false
     var showLeaveAlert = false
 
     private let repository = HouseholdRepository()
@@ -105,6 +107,28 @@ final class HouseholdDetailModel {
             await auth.refreshJoinedHouseholds()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func transferOwnership(to newOwner: HouseholdMember, auth: AuthModel, recipesRefresh: RecipesRefresh? = nil) async -> Bool {
+        guard let currentUserID = auth.user?.id else { return false }
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            try await repository.transferOwnership(
+                householdID: household.id,
+                newOwnerID: newOwner.userId,
+                currentOwnerID: currentUserID
+            )
+            await auth.refreshProfile()
+            await load(auth: auth)
+            recipesRefresh?.trigger()
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
         }
     }
 

@@ -146,6 +146,10 @@ struct HouseholdDetailView: View {
                                 isCurrentHouseholdOwner: isOwner,
                                 currentUserID: auth.user?.id,
                                 currentUserEmail: auth.user?.email,
+                                onTransferOwnership: {
+                                    model.memberToTransfer = member
+                                    model.showTransferAlert = true
+                                },
                                 onRemove: {
                                     model.memberToRemove = member
                                     model.showRemoveAlert = true
@@ -212,6 +216,21 @@ struct HouseholdDetailView: View {
             }
         } message: {
             Text("You will lose access to all recipes in this household.")
+        }
+        .alert("Transfer Ownership", isPresented: $model.showTransferAlert, presenting: model.memberToTransfer) { member in
+            Button("Cancel", role: .cancel) {
+                model.memberToTransfer = nil
+            }
+            Button("Transfer", role: .destructive) {
+                Task {
+                    let targetMember = member
+                    model.memberToTransfer = nil
+                    _ = await model.transferOwnership(to: targetMember, auth: auth, recipesRefresh: recipesRefresh)
+                }
+            }
+        } message: { member in
+            let memberName = member.displayName(currentUserID: auth.user?.id, currentUserEmail: auth.user?.email)
+            Text("Transfer ownership to \(memberName)? You will become a regular member and lose the ability to manage recipes and members.")
         }
         .alert("Remove Member", isPresented: $model.showRemoveAlert, presenting: model.memberToRemove) { member in
             Button("Cancel", role: .cancel) {

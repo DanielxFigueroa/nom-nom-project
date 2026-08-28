@@ -256,4 +256,34 @@ struct HouseholdRepository {
             .execute()
             .value
     }
+
+    /// Transfers household ownership to another active member.
+    /// Uses the atomic Postgres RPC function `transfer_household_ownership` with fallback to sequential updates.
+    func transferOwnership(householdID: UUID, newOwnerID: UUID, currentOwnerID: UUID) async throws {
+        struct TransferParams: Encodable {
+            let p_household_id: UUID
+            let p_new_owner_id: UUID
+        }
+
+        do {
+            try await client
+                .rpc("transfer_household_ownership", params: TransferParams(p_household_id: householdID, p_new_owner_id: newOwnerID))
+                .execute()
+        } catch {
+            // Fallback: sequential updates
+            try await client
+                .from("household_members")
+                .update(["role": HouseholdMember.MemberRole.owner.rawValue])
+                .eq("household_id", value: householdID)
+                .eq("user_id", value: newOwnerID)
+                .execute()
+
+            try await client
+                .from("household_members")
+                .update(["role": HouseholdMember.MemberRole.member.rawValue])
+                .eq("household_id", value: householdID)
+                .eq("user_id", value: currentOwnerID)
+                .execute()
+        }
+    }
 }

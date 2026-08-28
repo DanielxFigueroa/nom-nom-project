@@ -7,6 +7,7 @@ struct MemberRow: View {
     let isCurrentHouseholdOwner: Bool
     let currentUserID: UUID?
     let currentUserEmail: String?
+    var onTransferOwnership: (() -> Void)? = nil
     let onRemove: () -> Void
 
     var isOwner: Bool {
@@ -51,6 +52,12 @@ struct MemberRow: View {
 
             if isCurrentHouseholdOwner && !isOwner {
                 Menu {
+                    if let onTransferOwnership {
+                        Button(action: onTransferOwnership) {
+                            Label("Transfer Ownership", systemImage: "arrow.left.arrow.right")
+                        }
+                    }
+
                     Button(role: .destructive, action: onRemove) {
                         Label("Remove from Household", systemImage: "person.fill.xmark")
                     }

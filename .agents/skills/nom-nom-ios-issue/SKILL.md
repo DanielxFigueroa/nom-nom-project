@@ -81,7 +81,7 @@ Follow these steps:
 ### DEPLOY
 
 - Open a Pull Request and request a review. Note in the PR body that the iOS build
-  passed, and list any applied Supabase migrations.
+  passed, and list any applied Supabase migrations. All PRs need to point merging into branch `ios-build`.
 
 Remember to use GitHub Plugins for all GitHub-related tasks, and Supabase Plugins
 for all Supabase-related tasks. The single hard gate that distinguishes this skill:

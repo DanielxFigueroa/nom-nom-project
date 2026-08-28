@@ -90,6 +90,7 @@ struct HouseholdsView: View {
             }
             .navigationTitle("Households")
             .task {
+                await auth.refreshJoinedHouseholds()
                 await loadRecipeCounts()
             }
             .onChange(of: auth.joinedHouseholdIds) {
@@ -105,7 +106,7 @@ struct HouseholdsView: View {
     }
 
     private func householdRow(_ household: Household) -> some View {
-        let isOwner = auth.isOwner(of: household.id) || household.id == auth.householdId
+        let isOwner = auth.isOwner(of: household.id)
         let name = household.name?.trimmingCharacters(in: .whitespacesAndNewlines)
         let displayName = (name != nil && !name!.isEmpty) ? name! : "Household (\(household.id.uuidString.suffix(4)))"
         let count = recipeCounts[household.id, default: 0]

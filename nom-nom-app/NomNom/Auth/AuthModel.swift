@@ -21,6 +21,9 @@ final class AuthModel {
     var isAuthenticated: Bool { session != nil }
 
     var joinedHouseholdIds: [UUID] { joinedHouseholds.map(\.id) }
+    var totalPendingCount: Int {
+        pendingRequestCounts.values.reduce(0, +)
+    }
 
     private let client = SupabaseManager.shared
     private let householdRepository = HouseholdRepository()
