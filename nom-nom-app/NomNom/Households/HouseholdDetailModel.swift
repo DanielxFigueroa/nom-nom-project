@@ -15,6 +15,7 @@ final class HouseholdDetailModel {
     var errorMessage: String?
     var memberToRemove: HouseholdMember?
     var showRemoveAlert = false
+    var showLeaveAlert = false
 
     private let repository = HouseholdRepository()
 
@@ -118,6 +119,35 @@ final class HouseholdDetailModel {
         } catch {
             requireApproval = oldValue
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func leaveHousehold(auth: AuthModel, recipesRefresh: RecipesRefresh? = nil) async -> Bool {
+        guard let userID = auth.user?.id else { return false }
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            try await repository.leaveHousehold(userID: userID, householdID: household.id)
+            await auth.refreshJoinedHouseholds()
+            if auth.householdId == household.id {
+                let nextID = auth.joinedHouseholds.first?.id
+                auth.householdId = nextID
+                if let nextID {
+                    try? await repository.linkProfile(userID: userID, householdID: nextID)
+                } else {
+                    struct ProfileHouseholdUpdate: Encodable {
+                        let household_id: UUID?
+                    }
+                    try? await SupabaseManager.shared.from("profiles").update(ProfileHouseholdUpdate(household_id: nil)).eq("id", value: userID).execute()
+                }
+            }
+            recipesRefresh?.trigger()
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
         }
     }
 }

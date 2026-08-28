@@ -16,7 +16,7 @@ struct RecipeDetailView: View {
     }
 
     private var isOwner: Bool {
-        auth.householdId != nil && model.recipe.householdId == auth.householdId
+        auth.isOwner(of: model.recipe.householdId)
     }
 
     var body: some View {
@@ -119,28 +119,53 @@ struct RecipeDetailView: View {
                 )
             }
         }
+        .onChange(of: auth.joinedHouseholdIds) { _, newIDs in
+            if !newIDs.contains(model.recipe.householdId) {
+                dismiss()
+            }
+        }
     }
 
+    @ViewBuilder
     private var folderSection: some View {
-        Button {
-            showFolderPicker = true
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "folder.fill")
-                    .font(.caption)
-                    .foregroundStyle(Color.nnTint)
-                Text(model.currentFolder?.name ?? "Move to folder…")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(model.currentFolder != nil ? Color.primary : Color.secondary)
+        if let currentFolder = model.currentFolder {
+            if isOwner {
+                Button {
+                    showFolderPicker = true
+                } label: {
+                    folderBadge(name: currentFolder.name, showChevron: true, isPlaceholder: false)
+                }
+                .buttonStyle(.plain)
+            } else {
+                folderBadge(name: currentFolder.name, showChevron: false, isPlaceholder: false)
+            }
+        } else if isOwner {
+            Button {
+                showFolderPicker = true
+            } label: {
+                folderBadge(name: "Move to folder…", showChevron: true, isPlaceholder: true)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func folderBadge(name: String, showChevron: Bool, isPlaceholder: Bool) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "folder.fill")
+                .font(.caption)
+                .foregroundStyle(Color.nnTint)
+            Text(name)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(isPlaceholder ? Color.secondary : Color.primary)
+            if showChevron {
                 Image(systemName: "chevron.right")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color(.secondarySystemBackground), in: Capsule())
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color(.secondarySystemBackground), in: Capsule())
     }
 
     private var heroImage: some View {
