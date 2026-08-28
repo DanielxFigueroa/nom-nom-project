@@ -124,6 +124,16 @@ struct RecipeDetailView: View {
                 dismiss()
             }
         }
+        .alert("Reminders Access Required", isPresented: $model.showRemindersPermissionAlert) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString), UIApplication.shared.canOpenURL(url) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("NomNom needs access to Reminders to export your ingredients list. You can enable access in Settings.")
+        }
     }
 
     @ViewBuilder
@@ -176,32 +186,146 @@ struct RecipeDetailView: View {
     }
 
     private var ingredientsSection: some View {
-        section("Ingredients") {
-            VStack(alignment: .leading, spacing: 12) {
-                servingsSliderHeader
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center) {
+                Text("Ingredients")
+                    .font(.title3.bold())
+                Spacer()
+                remindersExportButton
+            }
 
-                if model.hasLegacyUnscalableIngredients && model.isServingScaled {
-                    HStack(spacing: 6) {
-                        Image(systemName: "info.circle")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text("Scaling unavailable for legacy ingredients without numeric quantity.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.horizontal, 4)
+            if let successMessage = model.exportSuccessMessage {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Color.nnSuccess)
+                    Text(successMessage)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(Color.primary)
+                    Spacer()
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.nnSuccess.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
 
-                VStack(spacing: 0) {
-                    ForEach(model.ingredients) { ingredient in
-                        ingredientRow(ingredient)
-                        if ingredient.id != model.ingredients.last?.id {
-                            Divider()
-                        }
+            if let errorMessage = model.remindersErrorMessage {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .foregroundStyle(Color.nnError)
+                    Text(errorMessage)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(Color.nnError)
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.nnError.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            servingsSliderHeader
+
+            if model.hasLegacyUnscalableIngredients && model.isServingScaled {
+                HStack(spacing: 6) {
+                    Image(systemName: "info.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("Scaling unavailable for legacy ingredients without numeric quantity.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 4)
+            }
+
+            VStack(spacing: 0) {
+                ForEach(model.ingredients) { ingredient in
+                    ingredientRow(ingredient)
+                    if ingredient.id != model.ingredients.last?.id {
+                        Divider()
                     }
                 }
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: model.exportSuccessMessage)
+        .animation(.easeInOut(duration: 0.2), value: model.remindersErrorMessage)
+    }
+
+    @ViewBuilder
+    private var remindersExportButton: some View {
+        if model.isExportingToReminders {
+            HStack(spacing: 6) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Exporting…")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color(.secondarySystemBackground), in: Capsule())
+        } else {
+            Menu {
+                Section("Export") {
+                    if model.hasCheckedIngredients {
+                        Button {
+                            Task {
+                                await model.exportToReminders(onlyUnchecked: true)
+                            }
+                        } label: {
+                            Label("Export Unchecked (\(model.uncheckedIngredients.count))", systemImage: "checklist.unchecked")
+                        }
+                    }
+
+                    Button {
+                        Task {
+                            await model.exportToReminders(onlyUnchecked: false)
+                        }
+                    } label: {
+                        Label(model.hasCheckedIngredients ? "Export All (\(model.ingredients.count))" : "Export Ingredients", systemImage: "checklist")
+                    }
+                }
+
+                if !model.availableReminderLists.isEmpty {
+                    Section("Destination List") {
+                        ForEach(model.availableReminderLists) { list in
+                            Button {
+                                model.selectPreferredList(list.id)
+                            } label: {
+                                if model.selectedListID == list.id {
+                                    Label(list.title, systemImage: "checkmark")
+                                } else {
+                                    Text(list.title)
+                                }
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "list.bullet.clipboard")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(Color.nnTint)
+                    Text(remindersButtonTitle)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.nnTint)
+                    Image(systemName: "chevron.down")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color(.secondarySystemBackground), in: Capsule())
+            }
+        }
+    }
+
+    private var remindersButtonTitle: String {
+        if let name = model.selectedListName, !name.isEmpty, name != "Reminders" {
+            let truncated = name.count > 16 ? String(name.prefix(13)) + "…" : name
+            return "Add to \(truncated)"
+        }
+        return "Add to Reminders"
     }
 
     private var servingsSliderHeader: some View {

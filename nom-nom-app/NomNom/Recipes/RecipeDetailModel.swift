@@ -14,15 +14,25 @@ final class RecipeDetailModel {
     var isLoading = true
     var desiredServings: Int
 
+    // Reminders export state
+    var isExportingToReminders = false
+    var exportSuccessMessage: String?
+    var showRemindersPermissionAlert = false
+    var remindersErrorMessage: String?
+    var availableReminderLists: [RemindersListInfo] = []
+    var selectedListID: String?
+
     private let repository = RecipesRepository()
     private let tagsRepository = TagsRepository()
     private let foldersRepository = FoldersRepository()
+    private let remindersService = RemindersService.shared
 
     init(recipe: Recipe) {
         self.recipe = recipe
         self.isFavorite = recipe.isFavorite
         self.ingredients = recipe.ingredients ?? []
         self.desiredServings = max(recipe.servings, 1)
+        self.selectedListID = UserDefaults.standard.string(forKey: "preferredRemindersListID")
     }
 
     var minServings: Int { 1 }
@@ -109,7 +119,35 @@ final class RecipeDetailModel {
         } catch {
             // Keep whatever we already have from the list row.
         }
+        await loadReminderLists()
         isLoading = false
+    }
+
+    func loadReminderLists() async {
+        if remindersService.checkAuthorizationStatus() == .authorized {
+            if let lists = try? await remindersService.fetchReminderLists(), !lists.isEmpty {
+                availableReminderLists = lists
+                if selectedListID == nil || !lists.contains(where: { $0.id == selectedListID }) {
+                    if let defaultList = lists.first(where: { $0.isDefault }) {
+                        selectedListID = defaultList.id
+                    } else {
+                        selectedListID = lists.first?.id
+                    }
+                }
+            }
+        }
+    }
+
+    func selectPreferredList(_ id: String) {
+        selectedListID = id
+        UserDefaults.standard.set(id, forKey: "preferredRemindersListID")
+    }
+
+    var selectedListName: String? {
+        if let selectedListID, let match = availableReminderLists.first(where: { $0.id == selectedListID }) {
+            return match.title
+        }
+        return availableReminderLists.first(where: { $0.isDefault })?.title ?? availableReminderLists.first?.title
     }
 
     func moveToFolder(_ folderID: UUID?) async {
@@ -135,6 +173,60 @@ final class RecipeDetailModel {
             try await repository.setFavorite(recipeID: recipe.id, isFavorite: isFavorite)
         } catch {
             isFavorite.toggle() // revert on failure
+        }
+    }
+
+    var uncheckedIngredients: [Ingredient] {
+        ingredients.filter { !checkedIDs.contains($0.id) }
+    }
+
+    var hasCheckedIngredients: Bool {
+        !checkedIDs.isEmpty && checkedIDs.count < ingredients.count
+    }
+
+    /// Exports ingredients (scaled to current serving size) to Apple Reminders.
+    func exportToReminders(onlyUnchecked: Bool = false, targetListID: String? = nil) async {
+        let itemsToExport: [Ingredient]
+        if onlyUnchecked && !uncheckedIngredients.isEmpty {
+            itemsToExport = uncheckedIngredients
+        } else {
+            itemsToExport = ingredients
+        }
+
+        guard !itemsToExport.isEmpty else { return }
+
+        let chosenListID = targetListID ?? selectedListID
+        if let targetListID {
+            selectPreferredList(targetListID)
+        }
+
+        isExportingToReminders = true
+        remindersErrorMessage = nil
+        exportSuccessMessage = nil
+
+        let labels = itemsToExport.map { formattedLabel(for: $0) }
+
+        do {
+            let (count, listTitle) = try await remindersService.exportIngredients(labels, toCalendarIdentifier: chosenListID)
+            await loadReminderLists()
+            isExportingToReminders = false
+            let itemWord = count == 1 ? "ingredient" : "ingredients"
+            let targetSuffix = listTitle.isEmpty ? "Reminders" : listTitle
+            exportSuccessMessage = "Added \(count) \(itemWord) to \(targetSuffix)"
+
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(3.5))
+                guard let self else { return }
+                if self.exportSuccessMessage != nil {
+                    self.exportSuccessMessage = nil
+                }
+            }
+        } catch RemindersError.accessDenied {
+            isExportingToReminders = false
+            showRemindersPermissionAlert = true
+        } catch {
+            isExportingToReminders = false
+            remindersErrorMessage = error.localizedDescription
         }
     }
 }
