@@ -14,9 +14,16 @@ final class RecipeDetailModel {
     var isLoading = true
     var desiredServings: Int
 
+    // Reminders export state
+    var isExportingToReminders = false
+    var exportSuccessMessage: String?
+    var showRemindersPermissionAlert = false
+    var remindersErrorMessage: String?
+
     private let repository = RecipesRepository()
     private let tagsRepository = TagsRepository()
     private let foldersRepository = FoldersRepository()
+    private let remindersService = RemindersService.shared
 
     init(recipe: Recipe) {
         self.recipe = recipe
@@ -135,6 +142,53 @@ final class RecipeDetailModel {
             try await repository.setFavorite(recipeID: recipe.id, isFavorite: isFavorite)
         } catch {
             isFavorite.toggle() // revert on failure
+        }
+    }
+
+    var uncheckedIngredients: [Ingredient] {
+        ingredients.filter { !checkedIDs.contains($0.id) }
+    }
+
+    var hasCheckedIngredients: Bool {
+        !checkedIDs.isEmpty && checkedIDs.count < ingredients.count
+    }
+
+    /// Exports ingredients (scaled to current serving size) to Apple Reminders.
+    func exportToReminders(onlyUnchecked: Bool = false) async {
+        let itemsToExport: [Ingredient]
+        if onlyUnchecked && !uncheckedIngredients.isEmpty {
+            itemsToExport = uncheckedIngredients
+        } else {
+            itemsToExport = ingredients
+        }
+
+        guard !itemsToExport.isEmpty else { return }
+
+        isExportingToReminders = true
+        remindersErrorMessage = nil
+        exportSuccessMessage = nil
+
+        let labels = itemsToExport.map { formattedLabel(for: $0) }
+
+        do {
+            let count = try await remindersService.exportIngredients(labels)
+            isExportingToReminders = false
+            let itemWord = count == 1 ? "ingredient" : "ingredients"
+            exportSuccessMessage = "Added \(count) \(itemWord) to Reminders"
+
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(3.5))
+                guard let self else { return }
+                if self.exportSuccessMessage != nil {
+                    self.exportSuccessMessage = nil
+                }
+            }
+        } catch RemindersError.accessDenied {
+            isExportingToReminders = false
+            showRemindersPermissionAlert = true
+        } catch {
+            isExportingToReminders = false
+            remindersErrorMessage = error.localizedDescription
         }
     }
 }
