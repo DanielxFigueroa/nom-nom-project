@@ -10,18 +10,33 @@ struct AddRecipeView: View {
 
     private let repository = RecipesRepository()
 
+    private var isOwner: Bool {
+        guard let householdID = auth.householdId else { return false }
+        return auth.isOwner(of: householdID)
+    }
+
     var body: some View {
         NavigationStack {
-            RecipeFormView(
-                model: model,
-                submitTitle: "Create Recipe",
-                isSubmitting: isSubmitting,
-                onSubmit: create
-            )
+            Group {
+                if !isOwner {
+                    ContentUnavailableView(
+                        "Read-Only Access",
+                        systemImage: "lock.fill",
+                        description: Text("Only household owners can add recipes.")
+                    )
+                } else {
+                    RecipeFormView(
+                        model: model,
+                        submitTitle: "Create Recipe",
+                        isSubmitting: isSubmitting,
+                        onSubmit: create
+                    )
+                }
+            }
             .navigationTitle("Add Recipe")
             .navigationBarTitleDisplayMode(.inline)
             .task {
-                if let householdID = auth.householdId {
+                if let householdID = auth.householdId, isOwner {
                     await model.loadTags(householdID: householdID)
                 }
             }
@@ -29,7 +44,7 @@ struct AddRecipeView: View {
                 Button("OK") {
                     model = RecipeFormModel()
                     // Reload tags for the fresh form.
-                    if let householdID = auth.householdId {
+                    if let householdID = auth.householdId, isOwner {
                         Task { await model.loadTags(householdID: householdID) }
                     }
                 }

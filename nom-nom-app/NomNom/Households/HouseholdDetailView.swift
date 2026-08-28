@@ -5,6 +5,8 @@ import SwiftUI
 /// and household settings (require approval toggle).
 struct HouseholdDetailView: View {
     @Environment(AuthModel.self) private var auth
+    @Environment(RecipesRefresh.self) private var recipesRefresh
+    @Environment(\.dismiss) private var dismiss
     @State private var model: HouseholdDetailModel
     @State private var copied = false
 
@@ -173,6 +175,22 @@ struct HouseholdDetailView: View {
                     Text("Household Settings")
                 }
             }
+
+            // Voluntary Leave Section (Non-owners only)
+            if !isOwner {
+                Section {
+                    Button(role: .destructive) {
+                        model.showLeaveAlert = true
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text("Leave Household")
+                                .foregroundColor(.red)
+                            Spacer()
+                        }
+                    }
+                }
+            }
         }
         .navigationTitle(householdDisplayName)
         .navigationBarTitleDisplayMode(.inline)
@@ -181,6 +199,19 @@ struct HouseholdDetailView: View {
         }
         .refreshable {
             await model.load(auth: auth)
+        }
+        .alert("Leave \(householdDisplayName)?", isPresented: $model.showLeaveAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Leave", role: .destructive) {
+                Task {
+                    let success = await model.leaveHousehold(auth: auth, recipesRefresh: recipesRefresh)
+                    if success {
+                        dismiss()
+                    }
+                }
+            }
+        } message: {
+            Text("You will lose access to all recipes in this household.")
         }
         .alert("Remove Member", isPresented: $model.showRemoveAlert, presenting: model.memberToRemove) { member in
             Button("Cancel", role: .cancel) {

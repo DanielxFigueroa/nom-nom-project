@@ -6,6 +6,7 @@ struct FolderManagerView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(RecipesRefresh.self) private var recipesRefresh
+    @Environment(AuthModel.self) private var auth
 
     @State private var folders: [Folder] = []
     @State private var isLoading = true
@@ -26,6 +27,10 @@ struct FolderManagerView: View {
 
     private let repository = FoldersRepository()
 
+    private var isOwner: Bool {
+        auth.isOwner(of: householdID)
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -35,7 +40,7 @@ struct FolderManagerView: View {
                     ContentUnavailableView(
                         "No Folders Created",
                         systemImage: "folder",
-                        description: Text("Organize your recipes into nested folders by creating your first folder.")
+                        description: Text(isOwner ? "Organize your recipes into nested folders by creating your first folder." : "This household has no folders.")
                     )
                 } else {
                     List {
@@ -52,14 +57,16 @@ struct FolderManagerView: View {
                     Button("Done") { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        newFolderName = ""
-                        newFolderParentID = nil
-                        showCreateSheet = true
-                    } label: {
-                        Image(systemName: "folder.badge.plus")
+                    if isOwner {
+                        Button {
+                            newFolderName = ""
+                            newFolderParentID = nil
+                            showCreateSheet = true
+                        } label: {
+                            Image(systemName: "folder.badge.plus")
+                        }
+                        .accessibilityLabel("New Folder")
                     }
-                    .accessibilityLabel("New Folder")
                 }
             }
             .task { await loadFolders() }
@@ -103,33 +110,35 @@ struct FolderManagerView: View {
 
             Spacer()
 
-            Menu {
-                Button {
-                    editingFolder = folder
-                    editName = folder.name
-                    editParentID = folder.parentId
-                } label: {
-                    Label("Edit Folder", systemImage: "pencil")
-                }
+            if isOwner {
+                Menu {
+                    Button {
+                        editingFolder = folder
+                        editName = folder.name
+                        editParentID = folder.parentId
+                    } label: {
+                        Label("Edit Folder", systemImage: "pencil")
+                    }
 
-                Button {
-                    newFolderName = ""
-                    newFolderParentID = folder.id
-                    showCreateSheet = true
-                } label: {
-                    Label("Add Subfolder", systemImage: "folder.badge.plus")
-                }
+                    Button {
+                        newFolderName = ""
+                        newFolderParentID = folder.id
+                        showCreateSheet = true
+                    } label: {
+                        Label("Add Subfolder", systemImage: "folder.badge.plus")
+                    }
 
-                Button(role: .destructive) {
-                    folderToDelete = folder
+                    Button(role: .destructive) {
+                        folderToDelete = folder
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
                 } label: {
-                    Label("Delete", systemImage: "trash")
+                    Image(systemName: "ellipsis.circle")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .padding(4)
                 }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .padding(4)
             }
         }
         .padding(.vertical, 4)
