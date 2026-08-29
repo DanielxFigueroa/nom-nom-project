@@ -59,6 +59,21 @@ struct RecipeDetailView: View {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
                     Task {
+                        await model.exportPDF()
+                    }
+                } label: {
+                    if model.isExportingPDF {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                }
+                .disabled(model.isExportingPDF)
+                .accessibilityLabel("Export Recipe as PDF")
+
+                Button {
+                    Task {
                         await model.toggleFavorite()
                         recipesRefresh.trigger()
                     }
@@ -86,6 +101,13 @@ struct RecipeDetailView: View {
             }
         }
         .task { await model.load() }
+        .sheet(item: $model.exportedPDF, onDismiss: {
+            model.cleanupExportedPDF()
+        }) { item in
+            ActivityView(activityItems: [item.url]) { _ in
+                model.cleanupExportedPDF()
+            }
+        }
         .sheet(isPresented: $showFolderPicker) {
             if let householdID = auth.householdId {
                 FolderPickerSheet(
@@ -133,6 +155,16 @@ struct RecipeDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("NomNom needs access to Reminders to export your ingredients list. You can enable access in Settings.")
+        }
+        .alert("Export PDF Failed", isPresented: Binding(
+            get: { model.pdfErrorMessage != nil },
+            set: { if !$0 { model.pdfErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            if let errorMsg = model.pdfErrorMessage {
+                Text(errorMsg)
+            }
         }
     }
 
