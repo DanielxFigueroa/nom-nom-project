@@ -22,6 +22,11 @@ final class RecipeDetailModel {
     var availableReminderLists: [RemindersListInfo] = []
     var selectedListID: String?
 
+    // PDF export state
+    var isExportingPDF = false
+    var exportedPDF: ExportedPDF?
+    var pdfErrorMessage: String?
+
     private let repository = RecipesRepository()
     private let tagsRepository = TagsRepository()
     private let foldersRepository = FoldersRepository()
@@ -229,4 +234,41 @@ final class RecipeDetailModel {
             remindersErrorMessage = error.localizedDescription
         }
     }
+
+    /// Exports the full recipe as a styled PDF document and prepares it for sharing.
+    func exportPDF() async {
+        guard !isExportingPDF else { return }
+        isExportingPDF = true
+        pdfErrorMessage = nil
+
+        do {
+            let url = try await RecipePDFRenderer.generatePDF(
+                recipe: recipe,
+                ingredients: ingredients,
+                tags: tags,
+                desiredServings: desiredServings,
+                scaleFactor: scaleFactor
+            )
+            isExportingPDF = false
+            exportedPDF = ExportedPDF(url: url, title: recipe.title)
+        } catch {
+            isExportingPDF = false
+            pdfErrorMessage = error.localizedDescription
+        }
+    }
+
+    func cleanupExportedPDF() {
+        if let url = exportedPDF?.url {
+            try? FileManager.default.removeItem(at: url)
+        }
+        exportedPDF = nil
+    }
 }
+
+/// Identifiable container for an exported PDF file.
+struct ExportedPDF: Identifiable {
+    let id = UUID()
+    let url: URL
+    let title: String
+}
+
