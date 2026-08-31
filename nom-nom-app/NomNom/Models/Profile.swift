@@ -4,9 +4,11 @@ import Foundation
 struct Profile: Identifiable, Codable, Hashable {
     let id: UUID
     var householdId: UUID?
+    var pcosSettings: PCOSSettings?
 
     enum CodingKeys: String, CodingKey {
         case id
         case householdId = "household_id"
+        case pcosSettings = "pcos_settings"
     }
 }
