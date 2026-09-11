@@ -5,6 +5,8 @@ import SwiftUI
 struct PCOSInsightsCard: View {
     @Bindable var model: RecipeDetailModel
     @State private var isExpanded: Bool = true
+    @State private var swapToConfirm: PCOSAnalysisResult.SwapSuggestion?
+    @State private var showSwapAlert: Bool = false
 
     init(model: RecipeDetailModel) {
         self.model = model
@@ -30,6 +32,20 @@ struct PCOSInsightsCard: View {
         )
         .animation(.easeInOut(duration: 0.25), value: isExpanded)
         .animation(.easeInOut(duration: 0.25), value: model.pcosAnalysisState)
+        .alert(
+            "Apply Ingredient Swap?",
+            isPresented: $showSwapAlert,
+            presenting: swapToConfirm
+        ) { swap in
+            Button("Apply Swap") {
+                Task {
+                    await model.applySwap(swap)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { swap in
+            Text("Replace \"\(swap.originalIngredient)\" with \"\(swap.suggestedSwap)\"? This will update the recipe for all members of your household.")
+        }
     }
 
     // MARK: - Header
@@ -289,8 +305,51 @@ struct PCOSInsightsCard: View {
                         swapCard(swap)
                     }
                 }
+
+                Button {
+                    Task {
+                        _ = await model.forkAsPCOSVariation(householdID: model.recipe.householdId)
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        if model.isForkingVariation {
+                            ProgressView()
+                                .controlSize(.small)
+                                .tint(.white)
+                        } else {
+                            Image(systemName: "arrow.triangle.branch")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        Text(model.isForkingVariation ? "Saving Variation…" : "Save as PCOS Variation")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(Color.nnTint, in: RoundedRectangle(cornerRadius: 8))
+                    .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+                .disabled(model.isForkingVariation || model.isApplyingSwap)
+                .padding(.top, 4)
+
+                Text("Clones recipe with suggested swaps and tags it with PCOS.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
         }
+    }
+
+    private func isSwapApplied(_ swap: PCOSAnalysisResult.SwapSuggestion) -> Bool {
+        if model.appliedSwapIDs.contains(swap.id) {
+            return true
+        }
+        if model.recipe.isPCOSAdapted && model.ingredients.contains(where: {
+            $0.name.localizedCaseInsensitiveContains(swap.suggestedSwap)
+        }) {
+            return true
+        }
+        return false
     }
 
     private func swapCard(_ swap: PCOSAnalysisResult.SwapSuggestion) -> some View {
@@ -342,6 +401,47 @@ struct PCOSInsightsCard: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+
+            // Action row: Apply Swap or Applied state
+            HStack {
+                Spacer()
+                if isSwapApplied(swap) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption2.weight(.bold))
+                        Text("Swap Applied")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Color.nnSuccess.opacity(0.18), in: Capsule())
+                    .foregroundStyle(Color.nnSuccess)
+                } else {
+                    Button {
+                        swapToConfirm = swap
+                        showSwapAlert = true
+                    } label: {
+                        HStack(spacing: 5) {
+                            if model.isApplyingSwap && swapToConfirm?.id == swap.id {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.caption2.weight(.bold))
+                            }
+                            Text("Apply Swap")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.nnTint.opacity(0.15), in: Capsule())
+                        .foregroundStyle(Color.nnTint)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(model.isApplyingSwap || model.isForkingVariation)
+                }
+            }
+            .padding(.top, 2)
         }
         .padding(12)
         .background(Color(.systemBackground).opacity(0.75), in: RoundedRectangle(cornerRadius: 10))

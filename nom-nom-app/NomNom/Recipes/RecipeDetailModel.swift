@@ -30,6 +30,15 @@ final class RecipeDetailModel {
     // PCOS Assistant state
     var pcosAnalysisState: LoadingState<PCOSAnalysisResult> = .idle
     var isPCOSInsightsExpanded: Bool = true
+    var appliedSwapIDs: Set<String> = []
+    var lastAppliedSwapBackup: (swap: PCOSAnalysisResult.SwapSuggestion, previousIngredients: [Ingredient], previousRecipe: Recipe)?
+    var isApplyingSwap: Bool = false
+    var swapSuccessMessage: String?
+    var swapErrorMessage: String?
+
+    var isForkingVariation: Bool = false
+    var forkSuccessMessage: String?
+    var forkErrorMessage: String?
     let pcosSettingsStore: PCOSSettingsStore
     private let pcosService: PCOSService
 
@@ -179,6 +188,196 @@ final class RecipeDetailModel {
 
     func togglePCOSInsightsExpanded() {
         isPCOSInsightsExpanded.toggle()
+    }
+
+    // MARK: - PCOS Swaps & Forking
+
+    func makeRecipeInput() -> RecipeInput {
+        RecipeInput(
+            title: recipe.title,
+            description: recipe.description ?? "",
+            instructions: recipe.instructions ?? "",
+            imageURL: recipe.imageURL ?? RecipeFormModel.fallbackImageURL,
+            insulinIndexNotes: recipe.insulinIndexNotes,
+            mealTimingSuggestions: recipe.mealTimingSuggestions,
+            measurementSystem: recipe.measurementSystem,
+            servings: recipe.servings,
+            tagIDs: tags.map { $0.id },
+            folderID: recipe.folderId,
+            isPCOSAdapted: recipe.isPCOSAdapted
+        )
+    }
+
+    func findIngredientIndex(in list: [Ingredient]? = nil, matching name: String) -> Int? {
+        let source = list ?? ingredients
+        let trimmedTarget = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !trimmedTarget.isEmpty else { return nil }
+
+        // 1. Exact case-insensitive match
+        if let idx = source.firstIndex(where: {
+            $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == trimmedTarget
+        }) {
+            return idx
+        }
+
+        // 2. Substring match
+        if let idx = source.firstIndex(where: {
+            let n = $0.name.lowercased()
+            return n.contains(trimmedTarget) || trimmedTarget.contains(n)
+        }) {
+            return idx
+        }
+
+        return nil
+    }
+
+    func applySwap(_ swap: PCOSAnalysisResult.SwapSuggestion) async {
+        isApplyingSwap = true
+        swapErrorMessage = nil
+        swapSuccessMessage = nil
+
+        guard let index = findIngredientIndex(matching: swap.originalIngredient) else {
+            swapErrorMessage = "Could not locate \"\(swap.originalIngredient)\" in active ingredients."
+            isApplyingSwap = false
+            return
+        }
+
+        let backupIngredients = ingredients
+        let backupRecipe = recipe
+        lastAppliedSwapBackup = (swap, backupIngredients, backupRecipe)
+
+        var target = ingredients[index]
+        let previousName = target.name
+        target.name = swap.suggestedSwap
+
+        if let qtyStr = swap.adjustedQuantity?.trimmingCharacters(in: .whitespacesAndNewlines), !qtyStr.isEmpty {
+            target.quantity = qtyStr
+            target.quantityValue = IngredientDraft.parseQuantityValue(qtyStr) ?? Double(qtyStr)
+        }
+
+        if let unitStr = swap.adjustedUnit?.trimmingCharacters(in: .whitespacesAndNewlines), !unitStr.isEmpty {
+            target.unit = unitStr
+        }
+
+        ingredients[index] = target
+        recipe.isPCOSAdapted = true
+        appliedSwapIDs.insert(swap.id)
+
+        do {
+            let input = makeRecipeInput()
+            let ingredientInputs = ingredients.map {
+                IngredientInput(name: $0.name, quantity: $0.quantity, unit: $0.unit, quantityValue: $0.quantityValue)
+            }
+            try await repository.updateRecipe(id: recipe.id, input: input, ingredients: ingredientInputs)
+            swapSuccessMessage = "Replaced \"\(previousName)\" with \"\(swap.suggestedSwap)\""
+            isApplyingSwap = false
+
+            pcosService.invalidateCache(for: recipe.id)
+            await loadPCOSAnalysis(forceRefresh: true)
+        } catch {
+            ingredients = backupIngredients
+            recipe = backupRecipe
+            appliedSwapIDs.remove(swap.id)
+            lastAppliedSwapBackup = nil
+            swapErrorMessage = "Failed to update recipe: \(error.localizedDescription)"
+            isApplyingSwap = false
+        }
+    }
+
+    func undoSwap() async {
+        guard let backup = lastAppliedSwapBackup else { return }
+        isApplyingSwap = true
+        swapSuccessMessage = nil
+        swapErrorMessage = nil
+
+        ingredients = backup.previousIngredients
+        recipe = backup.previousRecipe
+        appliedSwapIDs.remove(backup.swap.id)
+        lastAppliedSwapBackup = nil
+
+        do {
+            let input = makeRecipeInput()
+            let ingredientInputs = ingredients.map {
+                IngredientInput(name: $0.name, quantity: $0.quantity, unit: $0.unit, quantityValue: $0.quantityValue)
+            }
+            try await repository.updateRecipe(id: recipe.id, input: input, ingredients: ingredientInputs)
+            isApplyingSwap = false
+
+            pcosService.invalidateCache(for: recipe.id)
+            await loadPCOSAnalysis(forceRefresh: true)
+        } catch {
+            swapErrorMessage = "Failed to revert swap: \(error.localizedDescription)"
+            isApplyingSwap = false
+        }
+    }
+
+    @discardableResult
+    func forkAsPCOSVariation(householdID: UUID) async -> Recipe? {
+        isForkingVariation = true
+        forkErrorMessage = nil
+        forkSuccessMessage = nil
+
+        do {
+            let pcosTag = try await tagsRepository.ensurePCOSTag(householdID: householdID)
+
+            let pcosSuffix = " (PCOS-Friendly)"
+            let variationTitle: String
+            if recipe.title.localizedCaseInsensitiveContains("pcos") {
+                variationTitle = recipe.title
+            } else {
+                variationTitle = "\(recipe.title)\(pcosSuffix)"
+            }
+
+            var clonedIngredients = ingredients
+            if let analysis = pcosAnalysisState.value {
+                for swap in analysis.swaps {
+                    if let idx = findIngredientIndex(in: clonedIngredients, matching: swap.originalIngredient) {
+                        var ing = clonedIngredients[idx]
+                        ing.name = swap.suggestedSwap
+                        if let qtyStr = swap.adjustedQuantity?.trimmingCharacters(in: .whitespacesAndNewlines), !qtyStr.isEmpty {
+                            ing.quantity = qtyStr
+                            ing.quantityValue = IngredientDraft.parseQuantityValue(qtyStr) ?? Double(qtyStr)
+                        }
+                        if let unitStr = swap.adjustedUnit?.trimmingCharacters(in: .whitespacesAndNewlines), !unitStr.isEmpty {
+                            ing.unit = unitStr
+                        }
+                        clonedIngredients[idx] = ing
+                    }
+                }
+            }
+
+            let ingredientInputs = clonedIngredients.map {
+                IngredientInput(name: $0.name, quantity: $0.quantity, unit: $0.unit, quantityValue: $0.quantityValue)
+            }
+
+            var tagIDs = Set(tags.map { $0.id })
+            tagIDs.insert(pcosTag.id)
+
+            let input = RecipeInput(
+                title: variationTitle,
+                description: recipe.description ?? "",
+                instructions: recipe.instructions ?? "",
+                imageURL: recipe.imageURL ?? RecipeFormModel.fallbackImageURL,
+                insulinIndexNotes: recipe.insulinIndexNotes,
+                mealTimingSuggestions: recipe.mealTimingSuggestions,
+                measurementSystem: recipe.measurementSystem,
+                servings: recipe.servings,
+                tagIDs: Array(tagIDs),
+                folderID: recipe.folderId,
+                isPCOSAdapted: true
+            )
+
+            let newRecipeID = try await repository.createRecipe(input, ingredients: ingredientInputs, householdID: householdID)
+            let newRecipe = try await repository.fetchRecipe(id: newRecipeID)
+
+            forkSuccessMessage = "Created PCOS variation: \"\(variationTitle)\""
+            isForkingVariation = false
+            return newRecipe
+        } catch {
+            forkErrorMessage = "Failed to save PCOS variation: \(error.localizedDescription)"
+            isForkingVariation = false
+            return nil
+        }
     }
 
     func loadReminderLists() async {
