@@ -13,6 +13,7 @@ struct RecipeInput {
     var servings: Int = 4
     var tagIDs: [UUID] = []
     var folderID: UUID? = nil
+    var isPCOSAdapted: Bool = false
 }
 
 struct IngredientInput {
@@ -129,9 +130,36 @@ struct RecipesRepository {
         let measurement_system: String
         let servings: Int
         let folder_id: UUID?
+        let is_pcos_adapted: Bool
+    }
+
+    private struct RecipeInsertFallback: Encodable {
+        let title: String
+        let description: String
+        let instructions: String
+        let image_url: String
+        let insulin_index_notes: String?
+        let meal_timing_suggestions: String?
+        let household_id: UUID
+        let measurement_system: String
+        let servings: Int
+        let folder_id: UUID?
     }
 
     private struct RecipeUpdate: Encodable {
+        let title: String
+        let description: String
+        let instructions: String
+        let image_url: String
+        let insulin_index_notes: String?
+        let meal_timing_suggestions: String?
+        let measurement_system: String
+        let servings: Int
+        let folder_id: UUID?
+        let is_pcos_adapted: Bool
+    }
+
+    private struct RecipeUpdateFallback: Encodable {
         let title: String
         let description: String
         let instructions: String
@@ -167,15 +195,40 @@ struct RecipesRepository {
             household_id: householdID,
             measurement_system: input.measurementSystem.rawValue,
             servings: input.servings,
-            folder_id: input.folderID
+            folder_id: input.folderID,
+            is_pcos_adapted: input.isPCOSAdapted
         )
-        let created: IDRow = try await client
-            .from("recipes")
-            .insert(row)
-            .select("id")
-            .single()
-            .execute()
-            .value
+        let created: IDRow
+        do {
+            created = try await client
+                .from("recipes")
+                .insert(row)
+                .select("id")
+                .single()
+                .execute()
+                .value
+        } catch {
+            // If the remote schema doesn't yet have is_pcos_adapted, retry with fallback row
+            let fallbackRow = RecipeInsertFallback(
+                title: input.title,
+                description: input.description,
+                instructions: input.instructions,
+                image_url: input.imageURL,
+                insulin_index_notes: input.insulinIndexNotes,
+                meal_timing_suggestions: input.mealTimingSuggestions,
+                household_id: householdID,
+                measurement_system: input.measurementSystem.rawValue,
+                servings: input.servings,
+                folder_id: input.folderID
+            )
+            created = try await client
+                .from("recipes")
+                .insert(fallbackRow)
+                .select("id")
+                .single()
+                .execute()
+                .value
+        }
         try await insertIngredients(ingredients, recipeID: created.id)
         if !input.tagIDs.isEmpty {
             try await tagsRepository.setRecipeTags(recipeID: created.id, tagIDs: input.tagIDs)
@@ -193,9 +246,25 @@ struct RecipesRepository {
             meal_timing_suggestions: input.mealTimingSuggestions,
             measurement_system: input.measurementSystem.rawValue,
             servings: input.servings,
-            folder_id: input.folderID
+            folder_id: input.folderID,
+            is_pcos_adapted: input.isPCOSAdapted
         )
-        try await client.from("recipes").update(row).eq("id", value: id).execute()
+        do {
+            try await client.from("recipes").update(row).eq("id", value: id).execute()
+        } catch {
+            let fallbackRow = RecipeUpdateFallback(
+                title: input.title,
+                description: input.description,
+                instructions: input.instructions,
+                image_url: input.imageURL,
+                insulin_index_notes: input.insulinIndexNotes,
+                meal_timing_suggestions: input.mealTimingSuggestions,
+                measurement_system: input.measurementSystem.rawValue,
+                servings: input.servings,
+                folder_id: input.folderID
+            )
+            try await client.from("recipes").update(fallbackRow).eq("id", value: id).execute()
+        }
         // Replace ingredient rows: delete existing, then insert the new set.
         try await client.from("ingredients").delete().eq("recipe_id", value: id).execute()
         try await insertIngredients(ingredients, recipeID: id)

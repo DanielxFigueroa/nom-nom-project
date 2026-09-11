@@ -37,6 +37,21 @@ struct RecipeCard: View {
                     .padding(12)
             }
             .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(alignment: .topLeading) {
+                if recipe.isPCOSAdapted {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 9, weight: .bold))
+                        Text("Adapted for PCOS")
+                            .font(.system(size: 10, weight: .semibold))
+                    }
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .foregroundStyle(Color.nnTint)
+                    .padding(8)
+                }
+            }
             .overlay(alignment: .topTrailing) {
                 if recipe.isFavorite {
                     Image(systemName: "heart.fill")

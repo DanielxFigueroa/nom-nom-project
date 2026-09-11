@@ -27,7 +27,22 @@ struct RecipeDetailView: View {
                     Text(model.recipe.title)
                         .font(.title.bold())
 
-                    folderSection
+                    HStack(spacing: 8) {
+                        folderSection
+
+                        if model.recipe.isPCOSAdapted {
+                            HStack(spacing: 5) {
+                                Image(systemName: "sparkles")
+                                    .font(.caption2.weight(.bold))
+                                Text("Adapted for PCOS")
+                                    .font(.caption.weight(.semibold))
+                            }
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 5)
+                            .background(Color.nnTint.opacity(0.12), in: Capsule())
+                            .foregroundStyle(Color.nnTint)
+                        }
+                    }
 
                     // Tag chips
                     if !model.tags.isEmpty {
@@ -37,6 +52,60 @@ struct RecipeDetailView: View {
                     if let description = model.recipe.description, !description.isEmpty {
                         Text(description)
                             .foregroundStyle(.secondary)
+                    }
+
+                    // PCOS Swap & Fork Feedback Banners
+                    if let successMsg = model.swapSuccessMessage {
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(Color.nnSuccess)
+                            Text(successMsg)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(Color.primary)
+                            Spacer()
+                            Button("Undo") {
+                                Task {
+                                    await model.undoSwap()
+                                    recipesRefresh.trigger()
+                                }
+                            }
+                            .font(.caption.bold())
+                            .foregroundStyle(Color.nnTint)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.nnSuccess.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+
+                    if let forkMsg = model.forkSuccessMessage {
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(Color.nnSuccess)
+                            Text(forkMsg)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(Color.primary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.nnSuccess.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+
+                    if let errorMsg = model.swapErrorMessage ?? model.forkErrorMessage {
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundStyle(Color.nnError)
+                            Text(errorMsg)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(Color.nnError)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.nnError.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                     }
 
                     if model.isPCOSEnabled {
@@ -176,6 +245,15 @@ struct RecipeDetailView: View {
         } message: {
             if let errorMsg = model.pdfErrorMessage {
                 Text(errorMsg)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: model.swapSuccessMessage)
+        .animation(.easeInOut(duration: 0.2), value: model.forkSuccessMessage)
+        .animation(.easeInOut(duration: 0.2), value: model.swapErrorMessage)
+        .animation(.easeInOut(duration: 0.2), value: model.forkErrorMessage)
+        .onChange(of: model.forkSuccessMessage) { _, newMsg in
+            if newMsg != nil {
+                recipesRefresh.trigger()
             }
         }
     }

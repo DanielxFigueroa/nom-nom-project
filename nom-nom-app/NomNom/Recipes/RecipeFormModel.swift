@@ -94,6 +94,7 @@ final class RecipeFormModel {
     // Tags
     var selectedTagIDs: Set<UUID> = []
     var isPCOS: Bool = false
+    var isPCOSAdapted: Bool = false
     var availableTags: [Tag] = []
     var pcosTag: Tag?
     var newTagName = ""
@@ -139,6 +140,7 @@ final class RecipeFormModel {
         instructions = recipe.instructions ?? ""
         measurementSystem = recipe.measurementSystem
         selectedFolderID = recipe.folderId
+        isPCOSAdapted = recipe.isPCOSAdapted
         self.ingredients = ingredients.map {
             IngredientDraft(id: $0.id, name: $0.name, quantity: $0.quantity ?? "", unit: $0.unit ?? "", quantityValue: $0.quantityValue)
         }
@@ -246,7 +248,8 @@ final class RecipeFormModel {
             measurementSystem: measurementSystem,
             servings: max(1, servings),
             tagIDs: Array(finalTagIDs),
-            folderID: selectedFolderID
+            folderID: selectedFolderID,
+            isPCOSAdapted: isPCOSAdapted
         )
         let ings = ingredients.map {
             IngredientInput(name: $0.name, quantity: $0.numericQuantityString, unit: $0.unit.nilIfEmpty, quantityValue: $0.quantityValue)

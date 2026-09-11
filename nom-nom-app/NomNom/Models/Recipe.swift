@@ -21,6 +21,7 @@ struct Recipe: Identifiable, Codable, Hashable {
     var folderId: UUID?
     var measurementSystem: MeasurementSystem
     var servings: Int
+    var isPCOSAdapted: Bool
 
     enum CodingKeys: String, CodingKey {
         case id, title, description, instructions, ingredients, tags, servings
@@ -33,6 +34,7 @@ struct Recipe: Identifiable, Codable, Hashable {
         case updatedAt = "updated_at"
         case measurementSystem = "measurement_system"
         case folderId = "folder_id"
+        case isPCOSAdapted = "is_pcos_adapted"
     }
 
     init(
@@ -51,7 +53,8 @@ struct Recipe: Identifiable, Codable, Hashable {
         tags: [Tag]? = nil,
         folderId: UUID? = nil,
         measurementSystem: MeasurementSystem = .imperial,
-        servings: Int = 4
+        servings: Int = 4,
+        isPCOSAdapted: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -69,6 +72,7 @@ struct Recipe: Identifiable, Codable, Hashable {
         self.folderId = folderId
         self.measurementSystem = measurementSystem
         self.servings = servings
+        self.isPCOSAdapted = isPCOSAdapted
     }
 
     init(from decoder: Decoder) throws {
@@ -89,6 +93,7 @@ struct Recipe: Identifiable, Codable, Hashable {
         folderId = try container.decodeIfPresent(UUID.self, forKey: .folderId)
         measurementSystem = try container.decodeIfPresent(MeasurementSystem.self, forKey: .measurementSystem) ?? .imperial
         servings = try container.decodeIfPresent(Int.self, forKey: .servings) ?? 4
+        isPCOSAdapted = try container.decodeIfPresent(Bool.self, forKey: .isPCOSAdapted) ?? false
     }
 }
 
