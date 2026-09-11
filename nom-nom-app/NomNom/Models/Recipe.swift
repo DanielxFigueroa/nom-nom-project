@@ -15,6 +15,7 @@ struct Recipe: Identifiable, Codable, Hashable {
     /// Kept as the raw ISO8601 string from Postgres. Ordering is done server-side,
     /// so we avoid client-side date decoding. Parse on demand if displayed.
     var createdAt: String?
+    var updatedAt: String?
     var ingredients: [Ingredient]?
     var tags: [Tag]?
     var folderId: UUID?
@@ -29,6 +30,7 @@ struct Recipe: Identifiable, Codable, Hashable {
         case insulinIndexNotes = "insulin_index_notes"
         case mealTimingSuggestions = "meal_timing_suggestions"
         case createdAt = "created_at"
+        case updatedAt = "updated_at"
         case measurementSystem = "measurement_system"
         case folderId = "folder_id"
     }
@@ -44,6 +46,7 @@ struct Recipe: Identifiable, Codable, Hashable {
         insulinIndexNotes: String? = nil,
         mealTimingSuggestions: String? = nil,
         createdAt: String? = nil,
+        updatedAt: String? = nil,
         ingredients: [Ingredient]? = nil,
         tags: [Tag]? = nil,
         folderId: UUID? = nil,
@@ -60,6 +63,7 @@ struct Recipe: Identifiable, Codable, Hashable {
         self.insulinIndexNotes = insulinIndexNotes
         self.mealTimingSuggestions = mealTimingSuggestions
         self.createdAt = createdAt
+        self.updatedAt = updatedAt
         self.ingredients = ingredients
         self.tags = tags
         self.folderId = folderId
@@ -79,6 +83,7 @@ struct Recipe: Identifiable, Codable, Hashable {
         insulinIndexNotes = try container.decodeIfPresent(String.self, forKey: .insulinIndexNotes)
         mealTimingSuggestions = try container.decodeIfPresent(String.self, forKey: .mealTimingSuggestions)
         createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
+        updatedAt = try container.decodeIfPresent(String.self, forKey: .updatedAt)
         ingredients = try container.decodeIfPresent([Ingredient].self, forKey: .ingredients)
         tags = try container.decodeIfPresent([Tag].self, forKey: .tags)
         folderId = try container.decodeIfPresent(UUID.self, forKey: .folderId)
