@@ -39,6 +39,11 @@ struct RecipeDetailView: View {
                             .foregroundStyle(.secondary)
                     }
 
+                    if model.isPCOSEnabled {
+                        PCOSInsightsCard(model: model)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+
                     if !model.ingredients.isEmpty {
                         ingredientsSection
                     }
@@ -144,6 +149,13 @@ struct RecipeDetailView: View {
         .onChange(of: auth.joinedHouseholdIds) { _, newIDs in
             if !newIDs.contains(model.recipe.householdId) {
                 dismiss()
+            }
+        }
+        .onChange(of: model.isPCOSEnabled) { _, isEnabled in
+            if isEnabled {
+                Task {
+                    await model.loadPCOSAnalysis()
+                }
             }
         }
         .alert("Reminders Access Required", isPresented: $model.showRemindersPermissionAlert) {
