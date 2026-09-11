@@ -27,17 +27,34 @@ final class RecipeDetailModel {
     var exportedPDF: ExportedPDF?
     var pdfErrorMessage: String?
 
+    // PCOS Assistant state
+    var pcosAnalysisState: LoadingState<PCOSAnalysisResult> = .idle
+    var isPCOSInsightsExpanded: Bool = true
+    let pcosSettingsStore: PCOSSettingsStore
+    private let pcosService: PCOSService
+
     private let repository = RecipesRepository()
     private let tagsRepository = TagsRepository()
     private let foldersRepository = FoldersRepository()
     private let remindersService = RemindersService.shared
 
-    init(recipe: Recipe) {
+    init(
+        recipe: Recipe,
+        pcosSettingsStore: PCOSSettingsStore = .shared,
+        pcosService: PCOSService = .shared
+    ) {
         self.recipe = recipe
+        self.pcosSettingsStore = pcosSettingsStore
+        self.pcosService = pcosService
         self.isFavorite = recipe.isFavorite
         self.ingredients = recipe.ingredients ?? []
         self.desiredServings = max(recipe.servings, 1)
         self.selectedListID = UserDefaults.standard.string(forKey: "preferredRemindersListID")
+    }
+
+    /// Whether the user has opted into the PCOS Recipe Assistant.
+    var isPCOSEnabled: Bool {
+        pcosSettingsStore.settings.isEnabled
     }
 
     var minServings: Int { 1 }
@@ -125,7 +142,43 @@ final class RecipeDetailModel {
             // Keep whatever we already have from the list row.
         }
         await loadReminderLists()
+        if isPCOSEnabled {
+            await loadPCOSAnalysis()
+        }
         isLoading = false
+    }
+
+    /// Triggers or re-evaluates PCOS analysis using on-device intelligence.
+    func loadPCOSAnalysis(forceRefresh: Bool = false) async {
+        guard isPCOSEnabled else {
+            pcosAnalysisState = .idle
+            return
+        }
+
+        if !forceRefresh, case .loaded = pcosAnalysisState {
+            return
+        }
+
+        pcosAnalysisState = .loading
+
+        if forceRefresh {
+            pcosService.invalidateCache(for: recipe.id)
+        }
+
+        do {
+            let result = try await pcosService.analyze(
+                recipe: recipe,
+                ingredients: ingredients,
+                settings: pcosSettingsStore.settings
+            )
+            pcosAnalysisState = .loaded(result)
+        } catch {
+            pcosAnalysisState = .failed(error.localizedDescription)
+        }
+    }
+
+    func togglePCOSInsightsExpanded() {
+        isPCOSInsightsExpanded.toggle()
     }
 
     func loadReminderLists() async {
