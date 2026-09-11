@@ -8,6 +8,7 @@ struct AccountView: View {
     @State private var showFolders = false
     @State private var ownedHousehold: Household?
     @State private var copied = false
+    @Bindable private var pcosStore = PCOSSettingsStore.shared
 
     var body: some View {
         NavigationStack {
@@ -64,6 +65,11 @@ struct AccountView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+
+                Section("Health & Dietary Lenses") {
+                    PCOSSettingsView(store: pcosStore)
+                }
+
                 if let householdID = auth.householdId {
                     Section("Folders") {
                         Button {
@@ -93,8 +99,12 @@ struct AccountView: View {
                 }
             }
             .task {
-                guard let id = auth.householdId else { return }
-                ownedHousehold = try? await HouseholdRepository().fetchHousehold(id: id)
+                if let id = auth.householdId {
+                    ownedHousehold = try? await HouseholdRepository().fetchHousehold(id: id)
+                }
+                if let userID = auth.user?.id {
+                    await pcosStore.loadSettings(userID: userID)
+                }
             }
             .sheet(isPresented: $showFolders) {
                 if let householdID = auth.householdId {
